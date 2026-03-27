@@ -1,0 +1,105 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: quizzes
+    // Document ID: quizId (string)
+    // Fields:
+    //   - id: string (required)
+    //   - title: string (required)
+    //   - description: string (optional)
+    //   - questions: list (required)
+    //   - leadCapture: bool (required)
+    //   - theme: map (optional)
+    //   - authorUid: string (required, immutable)
+    //   - createdAt: timestamp (optional)
+    //
+    // Collection: leads
+    // Document ID: leadId (string)
+    // Fields:
+    //   - quizId: string (required)
+    //   - name: string (optional)
+    //   - email: string (required)
+    //   - answers: map (optional)
+    //   - createdAt: timestamp (optional)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.authorUid;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidQuiz(data) {
+      return data.id is string &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.questions is list && data.questions.size() > 0 && data.questions.size() <= 50 &&
+             data.leadConfig is map &&
+             data.authorUid is string;
+    }
+
+    function isValidLead(data) {
+      return data.quizId is string &&
+             data.email is string && isValidEmail(data.email) &&
+             data.authorUid is string &&
+             (data.submittedAt is timestamp || data.submittedAt == null);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /quizzes/{quizId} {
+      // Anyone can read a quiz to take it
+      allow read: if true;
+      
+      // Only authenticated users can create quizzes, and they must set themselves as author
+      allow create: if isAuthenticated() && 
+                      isValidQuiz(request.resource.data) && 
+                      request.resource.data.authorUid == request.auth.uid;
+      
+      // Only the author can update or delete their quiz
+      allow update: if isDocOwner() && 
+                      isValidQuiz(request.resource.data) && 
+                      request.resource.data.authorUid == resource.data.authorUid;
+      
+      allow delete: if isDocOwner();
+    }
+
+    match /leads/{leadId} {
+      // Anyone can submit a lead (when taking a quiz)
+      allow create: if isValidLead(request.resource.data);
+      
+      // Only the quiz owner can read leads for their quizzes
+      allow read: if isAuthenticated() && (
+        resource.data.authorUid == request.auth.uid || 
+        get(/databases/$(database)/documents/quizzes/$(resource.data.quizId)).data.authorUid == request.auth.uid
+      );
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "PRODUCIA",
+  "description": "Plataforma todo-en-uno para vendedores de productos digitales. Investigación, modelado y creación con IA.",
+  "requestFramePermissions": ["microphone"]
+}

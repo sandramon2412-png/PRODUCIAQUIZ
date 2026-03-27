@@ -1,0 +1,71 @@
+{
+  "entities": {
+    "quiz": {
+      "title": "Quiz",
+      "description": "A quiz funnel created by a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "text": { "type": "string" },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "text": { "type": "string" },
+                    "value": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "leadCapture": { "type": "boolean" },
+        "theme": {
+          "type": "object",
+          "properties": {
+            "primaryColor": { "type": "string" },
+            "fontFamily": { "type": "string" },
+            "icon": { "type": "string" },
+            "accentColor": { "type": "string" }
+          }
+        },
+        "authorUid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "questions", "authorUid"]
+    },
+    "lead": {
+      "title": "Lead",
+      "description": "A lead captured from a quiz.",
+      "type": "object",
+      "properties": {
+        "quizId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "answers": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["quizId", "email"]
+    }
+  },
+  "firestore": {
+    "/quizzes/{quizId}": {
+      "schema": "quiz",
+      "description": "Collection of quizzes."
+    },
+    "/leads/{leadId}": {
+      "schema": "lead",
+      "description": "Collection of captured leads."
+    }
+  }
+}
