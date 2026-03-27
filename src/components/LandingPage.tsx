@@ -17,7 +17,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-3 group cursor-pointer">
             <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-purple-500/20 group-hover:scale-110 transition-transform">
               <img 
-                src="https://i.imgur.com/ZgpcxhX.png" 
+                src="https://i.imgur.com/GWLu6bm.png" 
                 alt="Logo" 
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover"
