@@ -292,7 +292,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-purple-500/20">
               <img 
-                src="https://i.imgur.com/plFiciT.jpeg" 
+                src="https://i.imgur.com/GWLu6bm.png" 
                 alt="Logo" 
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover"
