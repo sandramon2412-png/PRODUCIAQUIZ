@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
-  X, MessageSquare, Mic, Send, Loader2, 
-  FileText, ScrollText, BookOpen, BarChart3, Hammer, 
-  Fingerprint, Video, Settings, Camera, Plus, CheckCircle2, 
+import {
+  X, MessageSquare, Mic, Send, Loader2,
+  FileText, ScrollText, BookOpen, BarChart3, Hammer,
+  Fingerprint, Video, Settings, Camera, Plus, CheckCircle2,
   Trash2, ChevronRight, Download, Monitor, ListTodo, Bot,
-  Puzzle
+  Puzzle, Activity, Image, ShieldCheck, Box, Database,
+  Palette, Dumbbell, FileDown, Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -105,13 +106,26 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
         parts: [{ text: m.text }]
       }));
 
-      let systemPrompt = `Eres Lloyd, el asistente central de PRODUCIA. Tu objetivo es ayudar al usuario a navegar por la plataforma y ser su estratega de marketing.
-      
-      IMPORTANTE: Si el usuario te pide crear un Quiz, una encuesta o un funnel de calificación, menciónale que tienes un módulo especializado llamado "Quiz Builder" y sugiérele que lo abra. 
-      Dile exactamente: "He detectado que quieres crear un Quiz. Puedes abrir mi herramienta especializada 'Quiz Builder' para diseñarlo con IA."`;
-      
-      if (currentBot !== "General Assistant") {
-        systemPrompt += ` Actualmente estás actuando bajo el módulo de "${currentBot}". Responde con la experiencia específica de ese bot.`;
+      const selectedBotData = availableBots.find(b => b.name === currentBot);
+      let systemPrompt: string;
+
+      if (selectedBotData) {
+        systemPrompt = `${selectedBotData.systemInstruction}
+
+CONTEXTO: Estás operando dentro de Lloyd, el asistente central de PRODUCIA. El usuario está usando tu módulo "${currentBot}". Responde siempre en español, sé directo y práctico.
+
+Si el usuario te pide crear un Quiz o funnel, sugiérele abrir el "Quiz Builder" de la plataforma.`;
+      } else {
+        systemPrompt = `Eres Lloyd, el asistente central de PRODUCIA - la plataforma de IA para creadores de productos digitales. Tu objetivo es ayudar al usuario a:
+1. Encontrar ofertas ganadoras en Facebook Ad Library
+2. Analizar y modelar productos exitosos
+3. Crear contenido, copy y materiales de venta
+4. Configurar quiz funnels con redirección a Hotmart/Shopify/WhatsApp
+5. Escalar con Facebook Ads
+
+IMPORTANTE: Si el usuario te pide crear un Quiz, dile: "Puedes abrir el Quiz Builder desde el Dashboard o el menú de Bots para diseñarlo con IA."
+Si te pide ayuda con un tema específico (copy, ads, productos), sugiérele activar el bot especializado en la pestaña 'Bots'.
+Responde siempre en español, sé directo y práctico. No uses relleno.`;
       }
 
       const response = await aiService.generateCustomBotResponse(userMsg, systemPrompt, history);
@@ -174,14 +188,27 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
     setTodos(todos.filter(t => t.id !== id));
   };
 
-  const availableBots = [
-    { name: "Sales Letter Weapon", icon: ScrollText },
-    { name: "Ebook Writer", icon: BookOpen },
-    { name: "Meta Ads Decision", icon: BarChart3 },
-    { name: "AI Product Builder", icon: Hammer },
-    { name: "Identity Persuasion", icon: Fingerprint },
-    { name: "Master Script Ads", icon: Video },
-    { name: "Quiz Builder", icon: Puzzle }
+  const availableBots: { name: string; icon: any; systemInstruction: string; category: string }[] = [
+    // Copy & Funnels
+    { name: "Sales Letter Weapon", icon: ScrollText, category: "Copy", systemInstruction: "Eres un experto en Cartas de Venta (Sales Letters) de respuesta directa. Tu objetivo es ayudar al usuario a crear cartas de venta persuasivas que conviertan. Usa estructuras probadas como la de 12 pasos de David Frey o la de Gary Halbert. Enfócate en el gancho, la promesa, la prueba social y la oferta irresistible." },
+    { name: "Identity Persuasion", icon: Fingerprint, category: "Copy", systemInstruction: "Eres un experto en persuasión basada en identidad. Tu objetivo es crear mensajes que conecten con la identidad profunda del cliente ideal. No vendes características, vendes quién llegará a ser el cliente al usar el producto. Usa conceptos de psicología conductual y sesgos cognitivos." },
+    { name: "Página de Ventas", icon: FileText, category: "Copy", systemInstruction: "Eres un Copywriter experto en páginas de ventas de alta conversión. Tu objetivo es ayudar al usuario a escribir el copy de su landing page usando estructuras como AIDA, PAS o la Fórmula de los 5 Pasos de Eugene Schwartz. Sé persuasivo, enfócate en beneficios y usa un lenguaje que conecte con el avatar." },
+    // Contenido & Productos
+    { name: "Ebook Writer", icon: BookOpen, category: "Contenido", systemInstruction: "Eres un escritor experto de ebooks y productos digitales. Ayudas al usuario a estructurar su conocimiento en capítulos lógicos, escribir introducciones potentes y desarrollar contenido de alto valor que sea fácil de consumir." },
+    { name: "AI Product Builder", icon: Hammer, category: "Contenido", systemInstruction: "Eres un arquitecto de productos digitales. Ayudas a los usuarios a estructurar cursos online, programas de mentoría o servicios de alto valor. Te enfocas en la metodología, los entregables y la experiencia del cliente para asegurar resultados." },
+    { name: "Viral PDF Lab", icon: FileDown, category: "Contenido", systemInstruction: "Eres un experto en la creación de PDFs virales y Lead Magnets. Tu objetivo es diseñar documentos que la gente quiera compartir y que posicionen al usuario como una autoridad mientras captan leads de calidad." },
+    { name: "Ebook Designer", icon: Palette, category: "Contenido", systemInstruction: "Eres un diseñador editorial experto. Ayudas a los usuarios a definir el look & feel de sus ebooks, elegir paletas de colores, tipografías y layouts que se vean profesionales y sean fáciles de leer." },
+    // Tráfico & Ads
+    { name: "Ad Library Analyzer", icon: Search, category: "Tráfico", systemInstruction: "Eres el Bot Analizador de Facebook Ad Library de PRODUCIA. Tu especialidad es ayudar a los usuarios a encontrar y analizar ofertas ganadoras de productos digitales. Analizas el ángulo de venta, la promesa, el avatar objetivo y la estructura del funnel. Un anuncio activo por más de 30 días con múltiples variaciones = oferta ganadora. Sugieres cómo MODELAR (no copiar) esa oferta para crear algo mejor." },
+    { name: "Meta Ads Decision", icon: BarChart3, category: "Tráfico", systemInstruction: "Eres un motor de decisión para Meta Ads. Ayudas a los usuarios a interpretar sus métricas (CTR, CPC, ROAS, CPA) y a tomar decisiones estratégicas sobre qué anuncios apagar, cuáles escalar y qué cambios hacer en la segmentación." },
+    { name: "Andromda Meta Ads", icon: Activity, category: "Tráfico", systemInstruction: "Eres el guía estratégico de Andromda para Meta Ads. Te enfocas en el escalamiento horizontal y vertical, la optimización de presupuestos (CBO/ABO) y la creación de estructuras de campaña sólidas para e-commerce e infoproductos." },
+    { name: "Master Script Ads", icon: Video, category: "Tráfico", systemInstruction: "Eres un orquestador de guiones maestros para video ads. Ayudas a crear ganchos (hooks) potentes, el cuerpo del anuncio y llamadas a la acción (CTAs) que conviertan para Meta DTC. Te enfocas en el ritmo y la psicología visual." },
+    { name: "9 Figure DTC Images", icon: Image, category: "Tráfico", systemInstruction: "Eres un director creativo especializado en anuncios de imagen para Meta DTC. Ayudas a conceptualizar imágenes que detengan el scroll, usando ángulos de venta claros, ganchos visuales y textos persuasivos sobre la imagen." },
+    // Sistemas de Negocio
+    { name: "AI Brand Operation", icon: ShieldCheck, category: "Sistemas", systemInstruction: "Eres un arquitecto de sistemas de marca con IA. Ayudas a los usuarios a definir su voz de marca, pilares de contenido y procesos de comunicación automatizados para mantener una presencia coherente y escalable." },
+    { name: "AI Business Box", icon: Box, category: "Sistemas", systemInstruction: "Eres un consultor de negocios digitales. Ayudas a montar negocios completos apoyados en sistemas y procesos con IA. Te enfocas en la eficiencia, la delegación a la IA y la creación de un 'negocio en una caja'." },
+    { name: "AI Backend Builder", icon: Database, category: "Sistemas", systemInstruction: "Eres un ingeniero de backend para negocios digitales. Ayudas a construir la infraestructura invisible: ofertas de backend, sistemas de incorporación (onboarding), automatizaciones de entrega y procesos de escalamiento." },
+    { name: "Elite Trainer", icon: Dumbbell, category: "Sistemas", systemInstruction: "Eres un coach de alto rendimiento y productividad. Tu objetivo es ayudar al usuario a ejecutar sus tareas, mantener el foco y optimizar su energía diaria para lograr sus objetivos de negocio." },
   ];
 
   const models = ["Gemini 3.1 Pro", "GPT-4o (Simulated)", "Claude 3.5 (Simulated)", "Llama 3 (Simulated)"];
@@ -340,29 +367,60 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
 
         {activeTab === 'bots' && (
           <div className="space-y-4">
-            <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-4">Bots Instalados</h3>
-            <div className="grid grid-cols-1 gap-3">
-              {availableBots.map(bot => (
-                <button 
-                  key={bot.name}
-                  onClick={() => setCurrentBot(bot.name)}
-                  className={cn(
-                    "flex items-center justify-between p-4 rounded-2xl border transition-all group",
-                    currentBot === bot.name 
-                      ? "bg-purple-600/20 border-purple-500/50 text-white" 
-                      : "bg-white/5 border-white/5 text-zinc-400 hover:bg-white/10"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", currentBot === bot.name ? "bg-purple-500" : "bg-zinc-800")}>
-                      <bot.icon className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="text-sm font-bold">{bot.name}</span>
-                  </div>
-                  {currentBot === bot.name && <div className="w-2 h-2 bg-purple-500 rounded-full shadow-[0_0_10px_rgba(168,85,247,0.5)]" />}
-                </button>
-              ))}
-            </div>
+            {/* General Assistant */}
+            <button
+              onClick={() => { setCurrentBot("General Assistant"); setActiveTab('chat'); }}
+              className={cn(
+                "w-full flex items-center justify-between p-4 rounded-2xl border transition-all",
+                currentBot === "General Assistant"
+                  ? "bg-emerald-600/20 border-emerald-500/50 text-white"
+                  : "bg-white/5 border-white/5 text-zinc-400 hover:bg-white/10"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", currentBot === "General Assistant" ? "bg-emerald-500" : "bg-zinc-800")}>
+                  <MessageSquare className="w-5 h-5 text-white" />
+                </div>
+                <div className="text-left">
+                  <span className="text-sm font-bold block">Lloyd General</span>
+                  <span className="text-[10px] text-zinc-500">Asistente de estrategia general</span>
+                </div>
+              </div>
+              {currentBot === "General Assistant" && <div className="w-2 h-2 bg-emerald-500 rounded-full" />}
+            </button>
+
+            {/* Bots by Category */}
+            {['Copy', 'Contenido', 'Tráfico', 'Sistemas'].map(category => (
+              <div key={category}>
+                <h3 className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.2em] mb-2 mt-4 px-1">{
+                  category === 'Copy' ? 'Copy & Funnels' :
+                  category === 'Contenido' ? 'Contenido & Productos' :
+                  category === 'Tráfico' ? 'Tráfico & Ads' : 'Sistemas de Negocio'
+                }</h3>
+                <div className="space-y-2">
+                  {availableBots.filter(b => b.category === category).map(bot => (
+                    <button
+                      key={bot.name}
+                      onClick={() => { setCurrentBot(bot.name); setActiveTab('chat'); }}
+                      className={cn(
+                        "w-full flex items-center justify-between p-3 rounded-2xl border transition-all group",
+                        currentBot === bot.name
+                          ? "bg-purple-600/20 border-purple-500/50 text-white"
+                          : "bg-white/5 border-white/5 text-zinc-400 hover:bg-white/10"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", currentBot === bot.name ? "bg-purple-500" : "bg-zinc-800")}>
+                          <bot.icon className="w-4 h-4 text-white" />
+                        </div>
+                        <span className="text-xs font-bold">{bot.name}</span>
+                      </div>
+                      {currentBot === bot.name && <div className="w-2 h-2 bg-purple-500 rounded-full shadow-[0_0_10px_rgba(168,85,247,0.5)]" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

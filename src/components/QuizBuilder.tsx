@@ -48,6 +48,17 @@ interface RedirectConfig {
   delaySeconds: number;
 }
 
+interface PixelConfig {
+  enabled: boolean;
+  facebookPixelId: string;
+  trackEvents: {
+    pageView: boolean;
+    quizStart: boolean;
+    quizComplete: boolean;
+    leadSubmit: boolean;
+  };
+}
+
 interface Quiz {
   id: string;
   title: string;
@@ -62,6 +73,7 @@ interface Quiz {
     fields: { id: string; label: string; type: string; required: boolean }[];
   };
   redirectConfig: RedirectConfig;
+  pixelConfig: PixelConfig;
 }
 
 export default function QuizBuilder() {
@@ -110,6 +122,16 @@ export default function QuizBuilder() {
       whatsappNumber: '',
       whatsappMessage: 'Hola! Acabo de completar el quiz "{quizTitle}" y me gustaría saber más.',
       delaySeconds: 3,
+    },
+    pixelConfig: {
+      enabled: false,
+      facebookPixelId: '',
+      trackEvents: {
+        pageView: true,
+        quizStart: true,
+        quizComplete: true,
+        leadSubmit: true,
+      },
     }
   });
 
@@ -639,6 +661,85 @@ export default function QuizBuilder() {
                             }))}
                             className="w-32 bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all"
                           />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                {/* Facebook Pixel Config */}
+                <section className="space-y-8">
+                  <div className="flex items-center gap-4">
+                    <div className="w-1.5 h-8 rounded-full bg-blue-500" />
+                    <h2 className="text-2xl font-black text-white tracking-tight uppercase tracking-widest">Facebook Pixel</h2>
+                  </div>
+
+                  <div className="bg-zinc-900/30 border border-zinc-800 rounded-[32px] p-8 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-bold text-white mb-1">Activar Facebook Pixel</h3>
+                        <p className="text-xs text-zinc-500">Trackea conversiones y crea audiencias personalizadas desde tu quiz.</p>
+                      </div>
+                      <button
+                        onClick={() => setQuiz(prev => ({
+                          ...prev,
+                          pixelConfig: { ...prev.pixelConfig, enabled: !prev.pixelConfig.enabled }
+                        }))}
+                        className={`w-14 h-8 rounded-full transition-all relative ${quiz.pixelConfig.enabled ? 'bg-blue-500' : 'bg-zinc-700'}`}
+                      >
+                        <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all ${quiz.pixelConfig.enabled ? 'left-7' : 'left-1'}`} />
+                      </button>
+                    </div>
+
+                    {quiz.pixelConfig.enabled && (
+                      <div className="space-y-6 pt-4 border-t border-zinc-800/50">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-4">ID del Pixel de Facebook</label>
+                          <input
+                            type="text"
+                            value={quiz.pixelConfig.facebookPixelId}
+                            onChange={(e) => setQuiz(prev => ({
+                              ...prev,
+                              pixelConfig: { ...prev.pixelConfig, facebookPixelId: e.target.value }
+                            }))}
+                            placeholder="Ej: 123456789012345"
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all font-mono"
+                          />
+                          <p className="text-[10px] text-zinc-600 ml-4">Lo encuentras en Facebook Business Manager → Events Manager → Pixel ID</p>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-4 mb-3 block">Eventos a Trackear</label>
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              { key: 'pageView', name: 'PageView', desc: 'Al abrir el quiz' },
+                              { key: 'quizStart', name: 'InitiateCheckout', desc: 'Al iniciar el quiz' },
+                              { key: 'quizComplete', name: 'CompleteRegistration', desc: 'Al completar el quiz' },
+                              { key: 'leadSubmit', name: 'Lead', desc: 'Al enviar datos de contacto' },
+                            ].map((event) => (
+                              <button
+                                key={event.key}
+                                onClick={() => setQuiz(prev => ({
+                                  ...prev,
+                                  pixelConfig: {
+                                    ...prev.pixelConfig,
+                                    trackEvents: {
+                                      ...prev.pixelConfig.trackEvents,
+                                      [event.key]: !prev.pixelConfig.trackEvents[event.key as keyof typeof prev.pixelConfig.trackEvents]
+                                    }
+                                  }
+                                }))}
+                                className={`p-4 border rounded-2xl text-left transition-all ${
+                                  quiz.pixelConfig.trackEvents[event.key as keyof typeof quiz.pixelConfig.trackEvents]
+                                    ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                                    : 'bg-zinc-950/50 border-zinc-800 text-zinc-500'
+                                }`}
+                              >
+                                <p className="text-xs font-bold text-white">{event.name}</p>
+                                <p className="text-[10px] text-zinc-500">{event.desc}</p>
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     )}

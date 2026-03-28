@@ -26,14 +26,22 @@ export default function AuthPage() {
       await signInWithPopup(auth, googleProvider);
       navigate('/dashboard');
     } catch (err: any) {
+      console.error('Auth error:', err);
       if (err.code === 'auth/popup-closed-by-user') {
         setError('Ventana cerrada. Intenta de nuevo.');
       } else if (err.code === 'auth/popup-blocked') {
-        setError('El navegador bloqueó la ventana. Permite popups e intenta de nuevo.');
+        setError('El navegador bloqueó la ventana. Permite popups para este sitio e intenta de nuevo.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setError(`Este dominio no está autorizado en Firebase. Ve a Firebase Console → Authentication → Settings → Authorized domains y agrega: ${window.location.hostname}`);
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError('El proveedor de Google no está habilitado. Actívalo en Firebase Console → Authentication → Sign-in method.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setError('Error de red. Verifica tu conexión a internet.');
+      } else if (err.code === 'auth/internal-error') {
+        setError(`Error interno de autenticación. Asegúrate de que el dominio "${window.location.hostname}" esté en Firebase Console → Authentication → Settings → Authorized domains.`);
       } else {
-        setError('Error al iniciar sesión. Intenta de nuevo.');
+        setError(`Error: ${err.message || err.code || 'Desconocido'}. Si estás en un dominio personalizado, agrégalo en Firebase Console → Authentication → Authorized domains.`);
       }
-      console.error('Auth error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -99,6 +107,19 @@ export default function AuthPage() {
             >
               {error}
             </motion.p>
+          )}
+
+          {/* Domain Notice */}
+          {error && error.includes('dominio') && (
+            <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+              <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-2">Pasos para autorizar tu dominio:</p>
+              <ol className="text-xs text-zinc-400 space-y-1 list-decimal list-inside">
+                <li>Ve a <span className="text-white font-bold">console.firebase.google.com</span></li>
+                <li>Selecciona tu proyecto</li>
+                <li>Authentication → Settings → Authorized domains</li>
+                <li>Agrega: <code className="bg-zinc-800 px-1 rounded text-emerald-400">{window.location.hostname}</code></li>
+              </ol>
+            </div>
           )}
 
           {/* Features */}
