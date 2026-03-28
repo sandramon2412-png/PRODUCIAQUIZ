@@ -172,21 +172,25 @@ export default function PublicQuiz() {
   useEffect(() => {
     const fetchQuiz = async () => {
       if (!quizId) return;
-      
+
+      // Always try localStorage first (fastest, works offline)
+      const savedQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
+      const localQuiz = savedQuizzes.find((q: any) => q.id === quizId);
+      if (localQuiz) {
+        setQuiz(localQuiz);
+        return;
+      }
+
+      // Then try Firestore
       try {
         const quizRef = doc(db, 'quizzes', quizId);
         const quizSnap = await getDoc(quizRef);
-        
+
         if (quizSnap.exists()) {
           setQuiz({ id: quizSnap.id, ...quizSnap.data() } as Quiz);
-        } else {
-          // Fallback to localStorage for local previews
-          const savedQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
-          const foundQuiz = savedQuizzes.find((q: any) => q.id === quizId);
-          if (foundQuiz) setQuiz(foundQuiz);
         }
       } catch (error) {
-        console.error("Error fetching quiz:", error);
+        console.error("Error fetching quiz from Firestore:", error);
       }
     };
 
@@ -236,16 +240,31 @@ export default function PublicQuiz() {
         });
       }
 
-      // Save lead to Firestore
+      // Save lead
       if (quizId && quiz) {
-        await addDoc(collection(db, 'leads'), {
+        const leadRecord = {
           quizId,
-          authorUid: (quiz as any).authorUid, // Include authorUid for easier querying
+          authorUid: (quiz as any).authorUid || 'guest',
           ...leadData,
           score: totalScore,
           answers,
-          submittedAt: serverTimestamp(),
-        });
+          submittedAt: new Date().toISOString(),
+        };
+
+        // Save to localStorage always
+        const existingLeads = JSON.parse(localStorage.getItem('producia_leads') || '[]');
+        existingLeads.unshift({ id: Date.now().toString(), ...leadRecord });
+        localStorage.setItem('producia_leads', JSON.stringify(existingLeads));
+
+        // Try to save to Firestore too
+        try {
+          await addDoc(collection(db, 'leads'), {
+            ...leadRecord,
+            submittedAt: serverTimestamp(),
+          });
+        } catch (firestoreError) {
+          console.warn("Firestore lead save failed, saved locally:", firestoreError);
+        }
       }
 
       setCurrentStep('result');
