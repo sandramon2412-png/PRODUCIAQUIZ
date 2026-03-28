@@ -16,9 +16,8 @@ import {
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { GoogleGenAI } from "@google/genai";
-import { auth, db, googleProvider, signInWithPopup } from '../firebase';
-import { onAuthStateChanged, User as FirebaseUser, signOut } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { supabase } from '../supabase';
+import type { User } from '@supabase/supabase-js';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -77,7 +76,7 @@ interface Quiz {
 }
 
 export default function QuizBuilder() {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [quiz, setQuiz] = useState<Quiz>({
     id: Math.random().toString(36).substring(7),
@@ -144,16 +143,22 @@ export default function QuizBuilder() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
     });
-    return () => unsubscribe();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleLogin = async () => {
     setIsLoggingIn(true);
     try {
-      await signInWithPopup(auth, googleProvider);
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.href },
+      });
       setShowLoginModal(false);
     } catch (error) {
       console.error("Error logging in:", error);
@@ -164,7 +169,7 @@ export default function QuizBuilder() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await supabase.auth.signOut();
     } catch (error) {
       console.error("Error logging out:", error);
     }
@@ -184,19 +189,26 @@ export default function QuizBuilder() {
       const updatedQuizzes = [quizData, ...savedQuizzes.filter((q: any) => q.id !== quiz.id)];
       localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
 
-      // If signed in, also save to Firestore
+      // If signed in, also save to Supabase
       if (user) {
         try {
-          const quizRef = doc(db, 'quizzes', quiz.id);
-          await setDoc(quizRef, {
-            ...quiz,
-            authorUid: user.uid,
-            authorEmail: user.email,
-            publishedAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
+          await supabase.from('quizzes').upsert({
+            id: quiz.id,
+            title: quiz.title,
+            description: quiz.description,
+            theme: quiz.theme,
+            questions: quiz.questions,
+            results: quiz.results,
+            lead_config: quiz.leadConfig,
+            redirect_config: quiz.redirectConfig,
+            pixel_config: quiz.pixelConfig,
+            author_uid: user.id,
+            author_email: user.email,
+            published_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           });
-        } catch (firestoreError) {
-          console.warn("Firestore save failed, quiz saved locally:", firestoreError);
+        } catch (supabaseError) {
+          console.warn("Supabase save failed, quiz saved locally:", supabaseError);
         }
       }
 

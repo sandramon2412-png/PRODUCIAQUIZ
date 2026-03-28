@@ -2,45 +2,36 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Sparkles, ShieldCheck, Loader2, Zap, ArrowRight, AlertCircle, Crown, Lock } from 'lucide-react';
-import { auth, googleProvider, signInWithPopup } from '../firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { supabase } from '../supabase';
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showSetupGuide, setShowSetupGuide] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
         navigate('/dashboard', { replace: true });
       }
     });
-    return () => unsubscribe();
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError('');
     try {
-      await signInWithPopup(auth, googleProvider);
-      navigate('/dashboard');
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+      if (error) throw error;
     } catch (err: any) {
       console.error('Auth error:', err);
-      if (err.code === 'auth/popup-closed-by-user') {
-        setError('Ventana cerrada. Intenta de nuevo.');
-      } else if (err.code === 'auth/popup-blocked') {
-        setError('Tu navegador bloqueó la ventana emergente. Permite popups para este sitio e intenta de nuevo.');
-      } else if (err.code === 'auth/unauthorized-domain') {
-        setError(`Este dominio (${window.location.hostname}) no está autorizado en Firebase. El administrador debe agregarlo en Firebase Console.`);
-        setShowSetupGuide(true);
-      } else if (err.code === 'auth/network-request-failed') {
-        setError('Error de red. Verifica tu conexión a internet.');
-      } else {
-        setError(`Error al iniciar sesión. Si el problema persiste, contacta al soporte.`);
-        setShowSetupGuide(true);
-      }
+      setError(err.message || 'Error al iniciar sesión. Intenta de nuevo.');
     } finally {
       setIsLoading(false);
     }
@@ -111,22 +102,6 @@ export default function AuthPage() {
             </motion.div>
           )}
 
-          {showSetupGuide && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="mt-4 p-5 bg-zinc-800/50 border border-zinc-700/50 rounded-2xl space-y-3"
-            >
-              <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Administrador: para activar login en tu dominio</p>
-              <ol className="text-xs text-zinc-500 space-y-2 list-decimal list-inside">
-                <li>Ve a <span className="text-white font-bold">console.firebase.google.com</span></li>
-                <li>Crea un proyecto nuevo (o usa el existente)</li>
-                <li>Activa <span className="text-white font-bold">Authentication → Google</span></li>
-                <li>En <span className="text-white font-bold">Authorized domains</span> agrega: <code className="bg-zinc-900 px-1 rounded text-emerald-400">{window.location.hostname}</code></li>
-                <li>Copia las credenciales a <code className="bg-zinc-900 px-1 rounded text-emerald-400">firebase-applet-config.json</code></li>
-              </ol>
-            </motion.div>
-          )}
 
           {/* What you get with account */}
           <div className="mt-8 space-y-3 border-t border-zinc-800/50 pt-6">

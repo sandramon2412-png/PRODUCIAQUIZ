@@ -5,24 +5,27 @@ import {
   ArrowLeft, User, Crown, Zap, Shield, LogOut,
   Mail, Calendar, Rocket, Check, ExternalLink, Trash2
 } from 'lucide-react';
-import { auth } from '../firebase';
-import { onAuthStateChanged, User as FirebaseUser, signOut, deleteUser } from 'firebase/auth';
+import { supabase } from '../supabase';
+import type { User } from '@supabase/supabase-js';
 
 export default function SettingsPage() {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
       setAuthLoading(false);
-      if (!currentUser) {
-        navigate('/login', { replace: true });
-      }
+      if (!session?.user) navigate('/login', { replace: true });
     });
-    return () => unsubscribe();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+      if (!session?.user) navigate('/login', { replace: true });
+    });
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   if (authLoading || !user) {
@@ -33,7 +36,7 @@ export default function SettingsPage() {
     );
   }
 
-  const userPlan: 'free' | 'pro' | 'agency' = (localStorage.getItem(`producia_plan_${user.uid}`) as any) || 'free';
+  const userPlan: 'free' | 'pro' | 'agency' = (localStorage.getItem(`producia_plan_${user.id}`) as any) || 'free';
   const planColors = {
     free: { bg: 'bg-zinc-500/10', border: 'border-zinc-500/20', text: 'text-zinc-400', label: 'Starter' },
     pro: { bg: 'bg-purple-500/10', border: 'border-purple-500/20', text: 'text-purple-400', label: 'Pro' },
@@ -42,26 +45,23 @@ export default function SettingsPage() {
   const plan = planColors[userPlan];
 
   const handleLogout = async () => {
-    await signOut(auth);
+    await supabase.auth.signOut();
     navigate('/');
   };
 
   const handleDeleteAccount = async () => {
     try {
-      localStorage.removeItem(`producia_plan_${user.uid}`);
+      localStorage.removeItem(`producia_plan_${user.id}`);
       localStorage.removeItem('producia_onboarded');
-      await deleteUser(user);
+      await supabase.auth.signOut();
       navigate('/');
+      alert('Para eliminar tu cuenta completamente, contacta a soporte.');
     } catch (error: any) {
-      if (error.code === 'auth/requires-recent-login') {
-        alert('Por seguridad, necesitas volver a iniciar sesión antes de eliminar tu cuenta.');
-        await signOut(auth);
-        navigate('/login');
-      }
+      console.error('Error:', error);
     }
   };
 
-  const createdAt = user.metadata.creationTime ? new Date(user.metadata.creationTime) : null;
+  const createdAt = user.created_at ? new Date(user.created_at) : null;
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans">
@@ -83,15 +83,15 @@ export default function SettingsPage() {
           className="bg-zinc-900/50 border border-zinc-800 rounded-[32px] p-8"
         >
           <div className="flex items-center gap-6 mb-8">
-            {user.photoURL ? (
-              <img src={user.photoURL} alt="" referrerPolicy="no-referrer" className="w-20 h-20 rounded-2xl border-2 border-emerald-500/50" />
+            {user.user_metadata?.avatar_url ? (
+              <img src={user.user_metadata.avatar_url} alt="" referrerPolicy="no-referrer" className="w-20 h-20 rounded-2xl border-2 border-emerald-500/50" />
             ) : (
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-2xl font-black">
-                {user.displayName?.[0] || 'U'}
+                {(user.user_metadata?.full_name || user.email || 'U')[0]}
               </div>
             )}
             <div>
-              <h3 className="text-2xl font-black text-white">{user.displayName || 'Usuario'}</h3>
+              <h3 className="text-2xl font-black text-white">{user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario'}</h3>
               <div className="flex items-center gap-2 mt-1">
                 <Mail className="w-3.5 h-3.5 text-zinc-500" />
                 <span className="text-sm text-zinc-500">{user.email}</span>
@@ -108,7 +108,7 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-zinc-800/30 rounded-2xl p-5 border border-zinc-800/50">
               <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">ID de Usuario</p>
-              <p className="text-xs text-zinc-400 font-mono truncate">{user.uid}</p>
+              <p className="text-xs text-zinc-400 font-mono truncate">{user.id}</p>
             </div>
             <div className="bg-zinc-800/30 rounded-2xl p-5 border border-zinc-800/50">
               <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">Proveedor</p>

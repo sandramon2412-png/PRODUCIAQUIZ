@@ -6,8 +6,7 @@ import {
   ArrowLeft, Star, Shield, Users, Bot,
   MessageSquare, Puzzle, BarChart3, Infinity
 } from 'lucide-react';
-import { auth } from '../firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { supabase } from '../supabase';
 
 interface Plan {
   id: 'free' | 'pro' | 'agency';
@@ -109,13 +108,12 @@ export default function PricingPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUserId(user.uid);
-        setCurrentPlan(localStorage.getItem(`producia_plan_${user.uid}`) || 'free');
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUserId(session.user.id);
+        setCurrentPlan(localStorage.getItem(`producia_plan_${session.user.id}`) || 'free');
       }
     });
-    return () => unsubscribe();
   }, []);
 
   const handleSelectPlan = (planId: string) => {

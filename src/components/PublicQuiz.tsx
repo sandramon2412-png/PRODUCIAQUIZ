@@ -8,8 +8,7 @@ import {
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { db } from '../firebase';
-import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { supabase } from '../supabase';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -181,16 +180,29 @@ export default function PublicQuiz() {
         return;
       }
 
-      // Then try Firestore
+      // Then try Supabase
       try {
-        const quizRef = doc(db, 'quizzes', quizId);
-        const quizSnap = await getDoc(quizRef);
+        const { data } = await supabase
+          .from('quizzes')
+          .select('*')
+          .eq('id', quizId)
+          .single();
 
-        if (quizSnap.exists()) {
-          setQuiz({ id: quizSnap.id, ...quizSnap.data() } as Quiz);
+        if (data) {
+          setQuiz({
+            id: data.id,
+            title: data.title,
+            description: data.description,
+            theme: data.theme,
+            questions: data.questions,
+            results: data.results,
+            leadConfig: data.lead_config,
+            redirectConfig: data.redirect_config,
+            pixelConfig: data.pixel_config,
+          } as Quiz);
         }
       } catch (error) {
-        console.error("Error fetching quiz from Firestore:", error);
+        console.error("Error fetching quiz from Supabase:", error);
       }
     };
 
@@ -256,14 +268,19 @@ export default function PublicQuiz() {
         existingLeads.unshift({ id: Date.now().toString(), ...leadRecord });
         localStorage.setItem('producia_leads', JSON.stringify(existingLeads));
 
-        // Try to save to Firestore too
+        // Try to save to Supabase too
         try {
-          await addDoc(collection(db, 'leads'), {
-            ...leadRecord,
-            submittedAt: serverTimestamp(),
+          await supabase.from('leads').insert({
+            quiz_id: quizId,
+            author_uid: (quiz as any).authorUid || (quiz as any).author_uid || 'guest',
+            name: leadData.name || null,
+            email: leadData.email || null,
+            score: totalScore,
+            answers,
+            submitted_at: new Date().toISOString(),
           });
-        } catch (firestoreError) {
-          console.warn("Firestore lead save failed, saved locally:", firestoreError);
+        } catch (supabaseError) {
+          console.warn("Supabase lead save failed, saved locally:", supabaseError);
         }
       }
 

@@ -13,9 +13,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { db, auth } from '../firebase';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
-import { onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { supabase } from '../supabase';
+import type { User } from '@supabase/supabase-js';
 import OnboardingModal from './OnboardingModal';
 
 function cn(...inputs: ClassValue[]) {
@@ -45,15 +44,22 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
       setAuthLoading(false);
-      if (!currentUser) {
-        // Not logged in → send to login
+      if (!session?.user) {
         navigate('/login', { replace: true });
       }
     });
-    return () => unsubscribe();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+      if (!session?.user) {
+        navigate('/login', { replace: true });
+      }
+    });
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   useEffect(() => {
@@ -65,50 +71,43 @@ export default function Dashboard() {
     const localLeads = JSON.parse(localStorage.getItem('producia_leads') || '[]');
     setLeads(localLeads);
 
-    // Then sync with Firestore
-    let unsubscribe: () => void = () => {};
-    let unsubscribeLeads: () => void = () => {};
+    // Then sync with Supabase
+    const fetchData = async () => {
+      try {
+        const { data: quizzes } = await supabase
+          .from('quizzes')
+          .select('*')
+          .eq('author_uid', user.id)
+          .order('published_at', { ascending: false });
 
-    try {
-      const q = query(
-        collection(db, 'quizzes'),
-        where('authorUid', '==', user.uid),
-        orderBy('publishedAt', 'desc')
-      );
+        if (quizzes && quizzes.length > 0) {
+          setSavedQuizzes(quizzes.map(q => ({
+            ...q,
+            authorUid: q.author_uid,
+            publishedAt: q.published_at,
+          })));
+        }
 
-      unsubscribe = onSnapshot(q, (snapshot) => {
-        const quizzes = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setSavedQuizzes(quizzes);
-      }, (error) => {
-        console.warn('Firestore quizzes sync failed, using local data:', error.message);
-      });
+        const { data: leadsData } = await supabase
+          .from('leads')
+          .select('*')
+          .eq('author_uid', user.id)
+          .order('submitted_at', { ascending: false });
 
-      const leadsQuery = query(
-        collection(db, 'leads'),
-        where('authorUid', '==', user.uid),
-        orderBy('submittedAt', 'desc')
-      );
-
-      unsubscribeLeads = onSnapshot(leadsQuery, (snapshot) => {
-        const leadsData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setLeads(leadsData);
-      }, (error) => {
-        console.warn('Firestore leads sync failed, using local data:', error.message);
-      });
-    } catch (error) {
-      console.warn('Firestore connection failed, using local data');
-    }
-
-    return () => {
-      unsubscribe();
-      unsubscribeLeads();
+        if (leadsData && leadsData.length > 0) {
+          setLeads(leadsData.map(l => ({
+            ...l,
+            quizId: l.quiz_id,
+            authorUid: l.author_uid,
+            submittedAt: l.submitted_at,
+          })));
+        }
+      } catch (error) {
+        console.warn('Supabase sync failed, using local data:', error);
+      }
     };
+
+    fetchData();
   }, [user]);
 
   // Show loading while checking auth
@@ -128,17 +127,18 @@ export default function Dashboard() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await supabase.auth.signOut();
     } catch (error) {
       console.error("Error logging out:", error);
     }
   };
 
-  const displayName = user?.displayName || 'Usuario';
-  const displayInitials = user?.displayName?.split(' ').map(n => n[0]).join('') || 'U';
+  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuario';
+  const displayInitials = (user?.user_metadata?.full_name || user?.email || 'U').split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
+  const userPhoto = user?.user_metadata?.avatar_url || null;
 
   // Plan system
-  const userPlan: 'free' | 'pro' | 'agency' = (localStorage.getItem(`producia_plan_${user.uid}`) as any) || 'free';
+  const userPlan: 'free' | 'pro' | 'agency' = (localStorage.getItem(`producia_plan_${user.id}`) as any) || 'free';
 
   const categories = [
     { id: 'Todos', name: 'Todos los Bots', icon: Layers },
@@ -324,8 +324,8 @@ export default function Dashboard() {
                 <LogOut className="w-5 h-5" />
               </button>
               <div className="flex items-center gap-3">
-                {user?.photoURL ? (
-                  <img src={user.photoURL} alt="" referrerPolicy="no-referrer" className="w-10 h-10 rounded-full border-2 border-emerald-500/50" />
+                {userPhoto ? (
+                  <img src={userPhoto} alt="" referrerPolicy="no-referrer" className="w-10 h-10 rounded-full border-2 border-emerald-500/50" />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 p-[1px]">
                     <div className="w-full h-full rounded-full bg-zinc-900 flex items-center justify-center text-[10px] font-black text-white">
