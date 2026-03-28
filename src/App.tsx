@@ -16,15 +16,17 @@ import ModeladorBot from './components/ModeladorBot';
 import QuizBuilder from './components/QuizBuilder';
 import PublicQuiz from './components/PublicQuiz';
 import ChatBot from './components/ChatBot';
+import PricingPage from './components/PricingPage';
+import AuthPage from './components/AuthPage';
 import { voiceService } from './services/voiceService';
 import { aiService } from './services/aiService';
 import { LloydPanel } from './components/LloydPanel';
 import LloydStandalone from './components/LloydStandalone';
 import { DownloadModal } from './components/DownloadModal';
-import { 
-  FileText, Megaphone, PenTool, Search, ScrollText, 
-  Fingerprint, BookOpen, Hammer, FileDown, BarChart3, 
-  Activity, Video, Image, ShieldCheck, Box, Database, 
+import {
+  FileText, Megaphone, PenTool, Search, ScrollText,
+  Fingerprint, BookOpen, Hammer, FileDown, BarChart3,
+  Activity, Video, Image, ShieldCheck, Box, Database,
   Palette, Dumbbell, ListTodo, Bot, Settings, Camera,
   MoreVertical, Plus, CheckCircle2, Trash2, ChevronRight, Download, Monitor
 } from 'lucide-react';
@@ -121,9 +123,53 @@ const AppContent = () => {
 
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/login" element={<AuthPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/lloyd" element={<LloydStandalone />} />
         <Route path="/bot/modelador" element={<ModeladorBot />} />
+
+        {/* Facebook Ad Library Analyzer */}
+        <Route
+          path="/bot/ad-library"
+          element={
+            <ChatBot
+              title="Ad Library Analyzer"
+              subtitle="Detector de Ofertas Ganadoras"
+              icon={Search}
+              color="bg-rose-600/20 border-rose-500/30 text-rose-400"
+              systemInstruction={`Eres el Bot Analizador de Facebook Ad Library de PRODUCIA. Tu especialidad es ayudar a los usuarios a encontrar y analizar ofertas ganadoras de productos digitales.
+
+FLUJO DE TRABAJO:
+1. El usuario te describe un nicho o te pega información de un anuncio que encontró en la Librería de Anuncios de Facebook.
+2. Tú analizas el ángulo de venta, la promesa, el avatar objetivo y la estructura del funnel.
+3. Identificas POR QUÉ es un anuncio ganador (más de 30 días activo = ganador).
+4. Sugieres cómo MODELAR (no copiar) esa oferta para crear algo mejor.
+5. Das un plan de acción paso a paso: producto → empaquetado → copy → checkout → ads.
+
+INDICADORES DE OFERTA GANADORA:
+- Anuncio activo por más de 30-60 días
+- Múltiples variaciones del mismo anuncio (están escalando)
+- Diferentes formatos (imagen, video, carrusel) = están probando
+- Reviews o comentarios positivos en el anuncio
+
+ESTRUCTURA DE RESPUESTA:
+1. ANÁLISIS DEL ANUNCIO (Qué venden, a quién, qué prometen)
+2. POR QUÉ FUNCIONA (Ganchos, ángulos psicológicos, urgencia)
+3. MODELO MEJORADO (Tu versión diferenciada y mejorada)
+4. PLAN DE ACCIÓN (Producto → Gamma/Canva → Hotmart → Landing → Facebook Ads)
+5. ESTIMACIÓN DE INVERSIÓN (Presupuesto sugerido para empezar)
+
+IMPORTANTE: No puedes navegar URLs. Si el usuario te da un link, pídele que pegue el texto del anuncio, la descripción y cualquier detalle visible.`}
+              placeholder="Pega aquí la descripción del anuncio que encontraste en Facebook Ad Library..."
+              suggestions={[
+                "Encontré un anuncio de un curso de trading con +50 variaciones",
+                "Analiza este nicho: pérdida de peso con ayuno intermitente",
+                "¿Cómo identifico ofertas ganadoras en la Ad Library?"
+              ]}
+            />
+          }
+        />
         
         {/* Copy & Funnels */}
         <Route 

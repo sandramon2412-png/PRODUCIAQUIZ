@@ -15,6 +15,15 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+interface RedirectConfig {
+  enabled: boolean;
+  type: 'none' | 'hotmart' | 'shopify' | 'whatsapp' | 'landing' | 'custom';
+  url: string;
+  whatsappNumber: string;
+  whatsappMessage: string;
+  delaySeconds: number;
+}
+
 interface Quiz {
   id: string;
   title: string;
@@ -38,6 +47,7 @@ interface Quiz {
     buttonText: string;
     fields: { id: string; label: string; type: string; required: boolean }[];
   };
+  redirectConfig?: RedirectConfig;
 }
 
 export default function PublicQuiz() {
@@ -49,6 +59,43 @@ export default function PublicQuiz() {
   const [leadData, setLeadData] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [score, setScore] = useState(0);
+  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
+
+  // Handle redirect after quiz result
+  useEffect(() => {
+    if (currentStep !== 'result' || !quiz?.redirectConfig?.enabled || quiz.redirectConfig.type === 'none') return;
+
+    const delay = quiz.redirectConfig.delaySeconds || 3;
+    setRedirectCountdown(delay);
+
+    const interval = setInterval(() => {
+      setRedirectCountdown(prev => {
+        if (prev === null || prev <= 1) {
+          clearInterval(interval);
+          performRedirect();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentStep]);
+
+  const performRedirect = () => {
+    if (!quiz?.redirectConfig?.enabled) return;
+    const config = quiz.redirectConfig;
+
+    if (config.type === 'whatsapp') {
+      const msg = config.whatsappMessage
+        .replace('{quizTitle}', quiz.title)
+        .replace('{score}', String(score));
+      const number = config.whatsappNumber.replace(/[^0-9]/g, '');
+      window.open(`https://wa.me/${number}?text=${encodeURIComponent(msg)}`, '_blank');
+    } else if (config.url) {
+      window.open(config.url, '_blank');
+    }
+  };
 
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -293,11 +340,33 @@ export default function PublicQuiz() {
 
               <div className="p-8 bg-zinc-900/50 border border-zinc-800 rounded-[40px] space-y-6">
                 <p className="text-zinc-400 text-lg leading-relaxed">{getResult().desc}</p>
-                <div className="pt-6 border-t border-zinc-800/50">
-                  <button className="w-full py-5 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3">
-                    Agendar Consultoría <Rocket className="w-4 h-4" />
-                  </button>
-                </div>
+
+                {quiz.redirectConfig?.enabled && quiz.redirectConfig.type !== 'none' && (
+                  <div className="pt-4 border-t border-zinc-800/50 space-y-3">
+                    {redirectCountdown !== null && redirectCountdown > 0 && (
+                      <p className="text-xs text-zinc-500 text-center">
+                        Redirigiendo en <span className="text-emerald-400 font-bold">{redirectCountdown}s</span>...
+                      </p>
+                    )}
+                    <button
+                      onClick={performRedirect}
+                      className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3"
+                    >
+                      {quiz.redirectConfig.type === 'whatsapp' ? 'Ir a WhatsApp' :
+                       quiz.redirectConfig.type === 'hotmart' ? 'Ir al Checkout' :
+                       quiz.redirectConfig.type === 'shopify' ? 'Ver en la Tienda' :
+                       'Continuar'} <Rocket className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                {(!quiz.redirectConfig?.enabled || quiz.redirectConfig.type === 'none') && (
+                  <div className="pt-6 border-t border-zinc-800/50">
+                    <button className="w-full py-5 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3">
+                      Agendar Consultoría <Rocket className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
