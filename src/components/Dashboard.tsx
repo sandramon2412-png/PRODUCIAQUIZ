@@ -37,6 +37,7 @@ export default function Dashboard() {
   const [savedQuizzes, setSavedQuizzes] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
   const [user, setUser] = useState<User | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,49 +45,76 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const guestMode = localStorage.getItem('producia_guest') === 'true';
+    setIsGuest(guestMode);
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        // If signed in, clear guest mode
+        localStorage.removeItem('producia_guest');
+        setIsGuest(false);
+      }
     });
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
     if (!user) {
-      // Fallback to localStorage if not logged in
+      // Fallback to localStorage for guest mode
       const quizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
       setSavedQuizzes(quizzes);
+      const localLeads = JSON.parse(localStorage.getItem('producia_leads') || '[]');
+      setLeads(localLeads);
       return;
     }
 
     // Real-time sync with Firestore
-    const q = query(
-      collection(db, 'quizzes'),
-      where('authorUid', '==', user.uid),
-      orderBy('publishedAt', 'desc')
-    );
+    let unsubscribe: () => void = () => {};
+    let unsubscribeLeads: () => void = () => {};
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const quizzes = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+    try {
+      const q = query(
+        collection(db, 'quizzes'),
+        where('authorUid', '==', user.uid),
+        orderBy('publishedAt', 'desc')
+      );
+
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const quizzes = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setSavedQuizzes(quizzes);
+      }, (error) => {
+        console.error('Firestore quizzes error:', error);
+        // Fallback to localStorage on error
+        const quizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
+        setSavedQuizzes(quizzes);
+      });
+
+      const leadsQuery = query(
+        collection(db, 'leads'),
+        where('authorUid', '==', user.uid),
+        orderBy('submittedAt', 'desc')
+      );
+
+      unsubscribeLeads = onSnapshot(leadsQuery, (snapshot) => {
+        const leadsData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setLeads(leadsData);
+      }, (error) => {
+        console.error('Firestore leads error:', error);
+        const localLeads = JSON.parse(localStorage.getItem('producia_leads') || '[]');
+        setLeads(localLeads);
+      });
+    } catch (error) {
+      console.error('Firestore connection error:', error);
+      const quizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
       setSavedQuizzes(quizzes);
-    });
-
-    // Real-time sync with Leads
-    const leadsQuery = query(
-      collection(db, 'leads'),
-      where('authorUid', '==', user.uid),
-      orderBy('submittedAt', 'desc')
-    );
-
-    const unsubscribeLeads = onSnapshot(leadsQuery, (snapshot) => {
-      const leadsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setLeads(leadsData);
-    });
+    }
 
     return () => {
       unsubscribe();
@@ -96,11 +124,21 @@ export default function Dashboard() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      if (isGuest) {
+        localStorage.removeItem('producia_guest');
+        localStorage.removeItem('producia_guest_name');
+        setIsGuest(false);
+        navigate('/');
+      } else {
+        await signOut(auth);
+      }
     } catch (error) {
       console.error("Error logging out:", error);
     }
   };
+
+  const displayName = user?.displayName || (isGuest ? 'Invitado' : null);
+  const displayInitials = user?.displayName?.split(' ').map(n => n[0]).join('') || (isGuest ? 'IN' : 'U');
 
   const categories = [
     { id: 'Todos', name: 'Todos los Bots', icon: Layers },
@@ -222,11 +260,19 @@ export default function Dashboard() {
         <div className="mt-auto p-8">
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-4">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Plan Pro</span>
+              <div className={`w-2 h-2 rounded-full animate-pulse ${isGuest ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{isGuest ? 'Modo Invitado' : user ? 'Plan Starter' : 'Sin Sesión'}</span>
             </div>
-            <p className="text-[11px] text-zinc-500 leading-relaxed mb-4">Has usado 12/50 créditos de IA este mes.</p>
-            <Link to="/pricing" className="block w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all text-center">Mejorar Plan</Link>
+            <p className="text-[11px] text-zinc-500 leading-relaxed mb-4">
+              {isGuest
+                ? 'Tus datos se guardan localmente. Vincula tu cuenta para sincronizar.'
+                : 'Accede a todos los bots y herramientas de IA.'}
+            </p>
+            {isGuest ? (
+              <Link to="/login" className="block w-full py-2 bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all text-center">Vincular Cuenta</Link>
+            ) : (
+              <Link to="/pricing" className="block w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all text-center">Mejorar Plan</Link>
+            )}
           </div>
         </div>
       </aside>
@@ -258,25 +304,34 @@ export default function Dashboard() {
                 className="bg-zinc-900/50 border border-zinc-800 rounded-xl py-2 pl-10 pr-4 text-xs text-zinc-400 focus:outline-none focus:border-emerald-500/50 w-64 transition-all"
               />
             </div>
-            {user ? (
+            {(user || isGuest) ? (
               <div className="flex items-center gap-4">
-                <button 
+                <button
                   onClick={handleLogout}
                   className="p-2 text-zinc-500 hover:text-red-400 transition-colors"
                   title="Cerrar Sesión"
                 >
                   <LogOut className="w-5 h-5" />
                 </button>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 p-[1px]">
-                  <div className="w-full h-full rounded-full bg-zinc-900 flex items-center justify-center text-[10px] font-black text-white">
-                    {user.displayName?.split(' ').map(n => n[0]).join('') || 'U'}
+                <div className="flex items-center gap-3">
+                  {isGuest && (
+                    <Link to="/login" className="px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-purple-500/20 transition-all hidden sm:block">
+                      Vincular Cuenta
+                    </Link>
+                  )}
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 p-[1px]">
+                    <div className="w-full h-full rounded-full bg-zinc-900 flex items-center justify-center text-[10px] font-black text-white">
+                      {displayInitials}
+                    </div>
                   </div>
                 </div>
               </div>
             ) : (
-              <Link to="/login" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">
-                Iniciar Sesión
-              </Link>
+              <div className="flex items-center gap-3">
+                <Link to="/login" className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">
+                  Entrar
+                </Link>
+              </div>
             )}
           </div>
         </header>
@@ -490,7 +545,7 @@ export default function Dashboard() {
                               </span>
                             </td>
                             <td className="px-8 py-6 text-xs text-zinc-500">
-                              {lead.submittedAt?.toDate().toLocaleDateString()}
+                              {lead.submittedAt?.toDate ? lead.submittedAt.toDate().toLocaleDateString() : new Date(lead.submittedAt).toLocaleDateString()}
                             </td>
                             <td className="px-8 py-6">
                               <button 
@@ -598,7 +653,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <h3 className="text-xl font-black text-white uppercase tracking-tight">Detalles del Lead</h3>
-                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Capturado el {selectedLead.submittedAt?.toDate().toLocaleString()}</p>
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Capturado el {selectedLead.submittedAt?.toDate ? selectedLead.submittedAt.toDate().toLocaleString() : new Date(selectedLead.submittedAt).toLocaleString()}</p>
                   </div>
                 </div>
                 <button 

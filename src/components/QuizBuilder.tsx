@@ -171,29 +171,35 @@ export default function QuizBuilder() {
   };
 
   const handlePublish = async () => {
-    if (!user) {
-      setShowLoginModal(true);
-      return;
-    }
-
     try {
       setIsGenerating(true);
-      
-      // Save to Firestore
-      const quizRef = doc(db, 'quizzes', quiz.id);
-      await setDoc(quizRef, {
-        ...quiz,
-        authorUid: user.uid,
-        authorEmail: user.email,
-        publishedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
 
-      // Update local storage for dashboard
+      // Always save to localStorage first (works for everyone)
       const savedQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
-      const updatedQuizzes = [quiz, ...savedQuizzes.filter((q: any) => q.id !== quiz.id)];
+      const quizData = {
+        ...quiz,
+        publishedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const updatedQuizzes = [quizData, ...savedQuizzes.filter((q: any) => q.id !== quiz.id)];
       localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
-      
+
+      // If signed in, also save to Firestore
+      if (user) {
+        try {
+          const quizRef = doc(db, 'quizzes', quiz.id);
+          await setDoc(quizRef, {
+            ...quiz,
+            authorUid: user.uid,
+            authorEmail: user.email,
+            publishedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        } catch (firestoreError) {
+          console.warn("Firestore save failed, quiz saved locally:", firestoreError);
+        }
+      }
+
       setQuizLink(`${window.location.origin}/quiz/${quiz.id}`);
       setShowPublishModal(true);
     } catch (error) {

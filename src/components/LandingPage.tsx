@@ -109,15 +109,18 @@ export default function LandingPage() {
               transition={{ delay: 0.4 }}
               className="flex flex-wrap gap-5"
             >
-              <Link 
-                to="/dashboard" 
+              <Link
+                to="/login"
                 className="px-12 py-6 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all hover:scale-105 shadow-2xl shadow-purple-600/40 flex items-center gap-4"
               >
                 Comenzar Ahora <ArrowRight className="w-5 h-5" />
               </Link>
-              <button className="px-12 py-6 bg-zinc-900/50 backdrop-blur-xl border border-white/10 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all hover:bg-zinc-800 flex items-center gap-4">
-                Ver Demo <Play className="w-4 h-4 fill-current" />
-              </button>
+              <Link
+                to="/dashboard"
+                className="px-12 py-6 bg-zinc-900/50 backdrop-blur-xl border border-white/10 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all hover:bg-zinc-800 flex items-center gap-4"
+              >
+                Explorar Gratis <Play className="w-4 h-4 fill-current" />
+              </Link>
             </motion.div>
 
             <motion.div 
