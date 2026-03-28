@@ -128,21 +128,17 @@ export default function Dashboard() {
 
   const handleLogout = async () => {
     try {
-      if (isGuest) {
-        localStorage.removeItem('producia_guest');
-        localStorage.removeItem('producia_guest_name');
-        setIsGuest(false);
-        navigate('/');
-      } else {
-        await signOut(auth);
-      }
+      await signOut(auth);
     } catch (error) {
       console.error("Error logging out:", error);
     }
   };
 
-  const displayName = user?.displayName || (isGuest ? 'Invitado' : null);
-  const displayInitials = user?.displayName?.split(' ').map(n => n[0]).join('') || (isGuest ? 'IN' : 'U');
+  const displayName = user?.displayName || 'Usuario';
+  const displayInitials = user?.displayName?.split(' ').map(n => n[0]).join('') || 'U';
+
+  // Plan system
+  const userPlan: 'free' | 'pro' | 'agency' = (localStorage.getItem(`producia_plan_${user.uid}`) as any) || 'free';
 
   const categories = [
     { id: 'Todos', name: 'Todos los Bots', icon: Layers },
@@ -152,22 +148,30 @@ export default function Dashboard() {
     { id: 'Sistemas', name: 'Sistemas de Negocio', icon: ShieldCheck },
   ];
 
+  // Bots available per plan
+  const freeBots = ['/bot/pagina-ventas', '/bot/ebook-writer', '/bot/product-builder'];
+
   const allBots: Bot[] = [
+    { name: "Bot Modelador", desc: "Analiza y modela ofertas ganadoras para superarlas.", icon: Target, color: "text-rose-400", path: "/bot/modelador", category: 'Copy' },
     { name: "Sales Letter Weapon", desc: "Cartas de venta persuasivas listas para convertir.", icon: ScrollText, color: "text-blue-400", path: "/bot/sales-letter", category: 'Copy' },
     { name: "Identity Persuasion", desc: "Mensajes que conectan con la identidad profunda.", icon: Fingerprint, color: "text-blue-400", path: "/bot/identity-persuasion", category: 'Copy' },
     { name: "Página de Ventas", desc: "Genera copys de alta conversión para tu landing.", icon: FileText, color: "text-blue-400", path: "/bot/pagina-ventas", category: 'Copy' },
     { name: "Ebook Writer", desc: "Contenido completo de tu ebook, capítulo a capítulo.", icon: BookOpen, color: "text-emerald-400", path: "/bot/ebook-writer", category: 'Contenido' },
     { name: "AI Product Builder", desc: "Estructura productos digitales completos con AI.", icon: Hammer, color: "text-emerald-400", path: "/bot/product-builder", category: 'Contenido' },
     { name: "The Viral PDF Lab", desc: "Diseña PDFs virales para captar leads orgánicos.", icon: FileDown, color: "text-emerald-400", path: "/bot/viral-pdf", category: 'Contenido' },
+    { name: "Ebook Designer", desc: "Diseña el look & feel profesional de tus ebooks.", icon: Palette, color: "text-rose-400", path: "/bot/ebook-designer", category: 'Contenido' },
     { name: "Meta Ads Decision", desc: "Toma decisiones sobre tus campañas con datos.", icon: BarChart3, color: "text-orange-400", path: "/bot/meta-decision", category: 'Trafico' },
     { name: "Andromda Meta Ads", desc: "Optimiza y escala tus campañas paso a paso.", icon: Activity, color: "text-orange-400", path: "/bot/andromda-ads", category: 'Trafico' },
     { name: "Master Script Ads", desc: "Guiones, ganchos y storyboards para Meta DTC.", icon: Video, color: "text-orange-400", path: "/bot/master-script", category: 'Trafico' },
     { name: "9 Figure DTC Images", desc: "Anuncios de imagen de alta conversión para Meta.", icon: Image, color: "text-orange-400", path: "/bot/dtc-images", category: 'Trafico' },
+    { name: "Ad Library Analyzer", desc: "Detecta ofertas ganadoras en Facebook Ad Library.", icon: Search, color: "text-rose-400", path: "/bot/ad-library", category: 'Trafico' },
     { name: "AI Brand Operation", desc: "Sistema completo para operar y comunicar tu marca.", icon: ShieldCheck, color: "text-purple-400", path: "/bot/brand-system", category: 'Sistemas' },
     { name: "AI Business Box", desc: "Monta un negocio digital completo con procesos AI.", icon: Box, color: "text-purple-400", path: "/bot/business-box", category: 'Sistemas' },
     { name: "AI Backend Builder", desc: "Ingeniero de ofertas, onboarding y automatización.", icon: Database, color: "text-purple-400", path: "/bot/backend-builder", category: 'Sistemas' },
-    { name: "Ad Library Analyzer", desc: "Detecta ofertas ganadoras en Facebook Ad Library.", icon: Search, color: "text-rose-400", path: "/bot/ad-library", category: 'Trafico' },
+    { name: "Elite Trainer", desc: "Coach de productividad y alto rendimiento.", icon: Dumbbell, color: "text-yellow-400", path: "/bot/elite-trainer", category: 'Sistemas' },
   ];
+
+  const isBotLocked = (bot: Bot) => userPlan === 'free' && !freeBots.includes(bot.path);
 
   const filteredBots = allBots
     .filter(bot => activeCategory === 'Todos' || bot.category === activeCategory)
@@ -264,18 +268,18 @@ export default function Dashboard() {
         <div className="mt-auto p-8">
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-4">
             <div className="flex items-center gap-3 mb-3">
-              <div className={`w-2 h-2 rounded-full animate-pulse ${isGuest ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{isGuest ? 'Modo Invitado' : user ? 'Plan Starter' : 'Sin Sesión'}</span>
+              <div className={`w-2 h-2 rounded-full animate-pulse ${userPlan === 'free' ? 'bg-zinc-500' : userPlan === 'pro' ? 'bg-purple-500' : 'bg-emerald-500'}`} />
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                Plan {userPlan === 'free' ? 'Starter' : userPlan === 'pro' ? 'Pro' : 'Agency'}
+              </span>
             </div>
             <p className="text-[11px] text-zinc-500 leading-relaxed mb-4">
-              {isGuest
-                ? 'Tus datos se guardan localmente. Vincula tu cuenta para sincronizar.'
-                : 'Accede a todos los bots y herramientas de IA.'}
+              {userPlan === 'free' ? 'Accede a bots básicos. Mejora para desbloquear todo.' : 'Acceso completo a todos los bots y herramientas de IA.'}
             </p>
-            {isGuest ? (
-              <Link to="/login" className="block w-full py-2 bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all text-center">Vincular Cuenta</Link>
+            {userPlan === 'free' ? (
+              <Link to="/pricing" className="block w-full py-2 bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all text-center">Mejorar Plan</Link>
             ) : (
-              <Link to="/pricing" className="block w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all text-center">Mejorar Plan</Link>
+              <Link to="/settings" className="block w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all text-center">Mi Cuenta</Link>
             )}
           </div>
         </div>
@@ -308,35 +312,29 @@ export default function Dashboard() {
                 className="bg-zinc-900/50 border border-zinc-800 rounded-xl py-2 pl-10 pr-4 text-xs text-zinc-400 focus:outline-none focus:border-emerald-500/50 w-64 transition-all"
               />
             </div>
-            {(user || isGuest) ? (
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={handleLogout}
-                  className="p-2 text-zinc-500 hover:text-red-400 transition-colors"
-                  title="Cerrar Sesión"
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
-                <div className="flex items-center gap-3">
-                  {isGuest && (
-                    <Link to="/login" className="px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-purple-500/20 transition-all hidden sm:block">
-                      Vincular Cuenta
-                    </Link>
-                  )}
+            <div className="flex items-center gap-4">
+              <Link to="/settings" className="p-2 text-zinc-500 hover:text-zinc-300 transition-colors" title="Configuración">
+                <Settings className="w-5 h-5" />
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="p-2 text-zinc-500 hover:text-red-400 transition-colors"
+                title="Cerrar Sesión"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-3">
+                {user?.photoURL ? (
+                  <img src={user.photoURL} alt="" referrerPolicy="no-referrer" className="w-10 h-10 rounded-full border-2 border-emerald-500/50" />
+                ) : (
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 p-[1px]">
                     <div className="w-full h-full rounded-full bg-zinc-900 flex items-center justify-center text-[10px] font-black text-white">
                       {displayInitials}
                     </div>
                   </div>
-                </div>
+                )}
               </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <Link to="/login" className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">
-                  Entrar
-                </Link>
-              </div>
-            )}
+            </div>
           </div>
         </header>
 
@@ -384,10 +382,10 @@ export default function Dashboard() {
               {/* Stats Overview */}
               <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                  { label: 'Leads Totales', value: leads.length, change: '+12%', icon: Users, color: 'text-emerald-400' },
-                  { label: 'Conversión Media', value: '24.8%', change: '+3.2%', icon: Activity, color: 'text-blue-400' },
-                  { label: 'Quizzes Activos', value: savedQuizzes.length, change: '0', icon: Puzzle, color: 'text-purple-400' },
-                  { label: 'Bots Utilizados', value: '8/13', change: 'Escalando', icon: Zap, color: 'text-orange-400' },
+                  { label: 'Leads Totales', value: leads.length, change: leads.length > 0 ? `${leads.length} capturados` : 'Empieza hoy', icon: Users, color: 'text-emerald-400' },
+                  { label: 'Plan Actual', value: userPlan === 'free' ? 'Starter' : userPlan === 'pro' ? 'Pro' : 'Agency', change: userPlan === 'free' ? 'Gratis' : 'Activo', icon: Activity, color: 'text-blue-400' },
+                  { label: 'Quizzes Activos', value: savedQuizzes.length, change: `de ${userPlan === 'free' ? '3' : '∞'} permitidos`, icon: Puzzle, color: 'text-purple-400' },
+                  { label: 'Bots Disponibles', value: userPlan === 'free' ? `3/${allBots.length}` : `${allBots.length}/${allBots.length}`, change: userPlan === 'free' ? 'Mejora tu plan' : 'Acceso total', icon: Zap, color: 'text-orange-400' },
                 ].map((stat) => (
                   <div key={stat.label} className="bg-zinc-900/30 border border-zinc-800/50 rounded-3xl p-6 hover:border-zinc-700 transition-all">
                     <div className="flex items-center justify-between mb-4">
@@ -461,20 +459,39 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {filteredBots.map((bot) => (
-                    <Link key={bot.name} to={bot.path} className="group">
-                      <div className="bg-zinc-900/50 border border-zinc-800 rounded-[32px] p-6 h-full flex flex-col transition-all duration-500 hover:bg-zinc-800/80 hover:shadow-2xl hover:-translate-y-1 group-hover:border-emerald-500/30">
-                        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center bg-zinc-800/50 group-hover:scale-110 transition-transform duration-500 mb-6", bot.color)}>
-                          <bot.icon className="w-7 h-7" />
+                  {filteredBots.map((bot) => {
+                    const locked = isBotLocked(bot);
+                    return locked ? (
+                      <Link key={bot.name} to="/pricing" className="group">
+                        <div className="bg-zinc-900/30 border border-zinc-800/30 rounded-[32px] p-6 h-full flex flex-col transition-all duration-500 hover:border-purple-500/30 relative overflow-hidden">
+                          <div className="absolute top-4 right-4 px-2 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                            <span className="text-[9px] font-black text-purple-400 uppercase tracking-widest">Pro</span>
+                          </div>
+                          <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center bg-zinc-800/30 mb-6 opacity-40", bot.color)}>
+                            <bot.icon className="w-7 h-7" />
+                          </div>
+                          <h3 className="text-zinc-500 text-lg font-bold leading-tight mb-2">{bot.name}</h3>
+                          <p className="text-zinc-700 text-xs leading-relaxed line-clamp-2 mb-6">{bot.desc}</p>
+                          <div className="mt-auto pt-4 flex items-center text-[10px] font-black uppercase tracking-[0.2em] text-purple-500/60">
+                            Desbloquear <ChevronRight className="w-3 h-3 ml-1" />
+                          </div>
                         </div>
-                        <h3 className="text-white text-lg font-bold group-hover:text-emerald-400 transition-colors leading-tight mb-2">{bot.name}</h3>
-                        <p className="text-zinc-500 text-xs leading-relaxed line-clamp-2 mb-6">{bot.desc}</p>
-                        <div className="mt-auto pt-4 flex items-center text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 group-hover:text-emerald-500 transition-colors">
-                          Ejecutar Bot <ChevronRight className="w-3 h-3 ml-1 group-hover:translate-x-1 transition-transform" />
+                      </Link>
+                    ) : (
+                      <Link key={bot.name} to={bot.path} className="group">
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-[32px] p-6 h-full flex flex-col transition-all duration-500 hover:bg-zinc-800/80 hover:shadow-2xl hover:-translate-y-1 group-hover:border-emerald-500/30">
+                          <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center bg-zinc-800/50 group-hover:scale-110 transition-transform duration-500 mb-6", bot.color)}>
+                            <bot.icon className="w-7 h-7" />
+                          </div>
+                          <h3 className="text-white text-lg font-bold group-hover:text-emerald-400 transition-colors leading-tight mb-2">{bot.name}</h3>
+                          <p className="text-zinc-500 text-xs leading-relaxed line-clamp-2 mb-6">{bot.desc}</p>
+                          <div className="mt-auto pt-4 flex items-center text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 group-hover:text-emerald-500 transition-colors">
+                            Ejecutar Bot <ChevronRight className="w-3 h-3 ml-1 group-hover:translate-x-1 transition-transform" />
+                          </div>
                         </div>
-                      </div>
-                    </Link>
-                  ))}
+                      </Link>
+                    );
+                  })}
                 </div>
               </section>
             </>

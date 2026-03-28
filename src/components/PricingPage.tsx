@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
@@ -6,6 +6,8 @@ import {
   ArrowLeft, Star, Shield, Users, Bot,
   MessageSquare, Puzzle, BarChart3, Infinity
 } from 'lucide-react';
+import { auth } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 interface Plan {
   id: 'free' | 'pro' | 'agency';
@@ -102,7 +104,37 @@ const plans: Plan[] = [
 
 export default function PricingPage() {
   const [annual, setAnnual] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<string>('free');
+  const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUserId(user.uid);
+        setCurrentPlan(localStorage.getItem(`producia_plan_${user.uid}`) || 'free');
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleSelectPlan = (planId: string) => {
+    if (!userId) {
+      navigate('/login');
+      return;
+    }
+    if (planId === 'free') {
+      localStorage.setItem(`producia_plan_${userId}`, 'free');
+      setCurrentPlan('free');
+      navigate('/dashboard');
+    } else {
+      // For paid plans, store selection and redirect to dashboard
+      // In production, this would go to Stripe/payment gateway
+      localStorage.setItem(`producia_plan_${userId}`, planId);
+      setCurrentPlan(planId);
+      navigate('/dashboard');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#020203] text-white font-sans overflow-x-hidden">
@@ -246,18 +278,21 @@ export default function PricingPage() {
                 ))}
               </div>
 
-              <Link
-                to="/dashboard"
+              <button
+                onClick={() => handleSelectPlan(plan.id)}
+                disabled={currentPlan === plan.id}
                 className={`w-full py-5 rounded-2xl font-black text-sm uppercase tracking-widest transition-all text-center block ${
-                  plan.popular
+                  currentPlan === plan.id
+                    ? 'bg-emerald-500/20 text-emerald-400 border-2 border-emerald-500/30 cursor-default'
+                    : plan.popular
                     ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-xl shadow-purple-500/20 hover:scale-[1.02]'
                     : plan.id === 'agency'
                     ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl shadow-emerald-500/20 hover:scale-[1.02]'
                     : 'bg-zinc-800 hover:bg-zinc-700 text-white hover:scale-[1.02]'
                 }`}
               >
-                {plan.cta}
-              </Link>
+                {currentPlan === plan.id ? '✓ Plan Actual' : plan.cta}
+              </button>
             </motion.div>
           ))}
         </div>
