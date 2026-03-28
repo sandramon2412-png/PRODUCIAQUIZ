@@ -16,6 +16,7 @@ import { twMerge } from 'tailwind-merge';
 import { db, auth } from '../firebase';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
+import OnboardingModal from './OnboardingModal';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -37,6 +38,9 @@ export default function Dashboard() {
   const [leads, setLeads] = useState<any[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('producia_onboarded'));
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -120,16 +124,26 @@ export default function Dashboard() {
     { name: "AI Brand Operation", desc: "Sistema completo para operar y comunicar tu marca.", icon: ShieldCheck, color: "text-purple-400", path: "/bot/brand-system", category: 'Sistemas' },
     { name: "AI Business Box", desc: "Monta un negocio digital completo con procesos AI.", icon: Box, color: "text-purple-400", path: "/bot/business-box", category: 'Sistemas' },
     { name: "AI Backend Builder", desc: "Ingeniero de ofertas, onboarding y automatización.", icon: Database, color: "text-purple-400", path: "/bot/backend-builder", category: 'Sistemas' },
+    { name: "Ad Library Analyzer", desc: "Detecta ofertas ganadoras en Facebook Ad Library.", icon: Search, color: "text-rose-400", path: "/bot/ad-library", category: 'Trafico' },
   ];
 
-  const filteredBots = activeCategory === 'Todos' 
-    ? allBots 
-    : allBots.filter(bot => bot.category === activeCategory);
+  const filteredBots = allBots
+    .filter(bot => activeCategory === 'Todos' || bot.category === activeCategory)
+    .filter(bot => !searchQuery || bot.name.toLowerCase().includes(searchQuery.toLowerCase()) || bot.desc.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div className="flex min-h-screen bg-[#050505] text-zinc-400 font-sans">
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[90] lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* Sidebar Navigation */}
-      <aside className="w-72 border-r border-zinc-800/50 bg-[#080808] flex flex-col hidden lg:flex shrink-0">
+      <aside className={cn(
+        "w-72 border-r border-zinc-800/50 bg-[#080808] flex flex-col shrink-0 transition-transform duration-300 z-[95]",
+        "fixed inset-y-0 left-0 lg:relative",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      )}>
         <div className="p-8">
           <div className="flex items-center gap-3 mb-10">
             <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)]">
@@ -190,11 +204,15 @@ export default function Dashboard() {
 
           <div className="mt-12">
             <p className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] mb-4 px-4">Herramientas</p>
-            <Link to="/bot/quizzes-funis" className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-all group">
+            <Link to="/bot/quizzes-funis" onClick={() => setSidebarOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-all group">
               <Puzzle className="w-4 h-4 text-zinc-600 group-hover:text-emerald-400" />
               AI Quiz Funnel
             </Link>
-            <button onClick={() => window.dispatchEvent(new CustomEvent('trigger-download'))} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-all group">
+            <Link to="/bot/ad-library" onClick={() => setSidebarOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-all group">
+              <Search className="w-4 h-4 text-zinc-600 group-hover:text-rose-400" />
+              Ad Library Analyzer
+            </Link>
+            <button onClick={() => { window.dispatchEvent(new CustomEvent('trigger-download')); setSidebarOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-all group">
               <Sparkles className="w-4 h-4 text-zinc-600 group-hover:text-purple-400" />
               Asistente Lloyd
             </button>
@@ -208,7 +226,7 @@ export default function Dashboard() {
               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Plan Pro</span>
             </div>
             <p className="text-[11px] text-zinc-500 leading-relaxed mb-4">Has usado 12/50 créditos de IA este mes.</p>
-            <button className="w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all">Mejorar Plan</button>
+            <Link to="/pricing" className="block w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all text-center">Mejorar Plan</Link>
           </div>
         </div>
       </aside>
@@ -216,19 +234,27 @@ export default function Dashboard() {
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto bg-[#050505]">
         {/* Top Header */}
-        <header className="h-20 border-b border-zinc-800/50 flex items-center justify-between px-8 md:px-12 sticky top-0 bg-[#050505]/80 backdrop-blur-xl z-50">
+        <header className="h-20 border-b border-zinc-800/50 flex items-center justify-between px-4 md:px-12 sticky top-0 bg-[#050505]/80 backdrop-blur-xl z-50">
           <div className="flex items-center gap-4">
-            <h2 className="text-white font-black text-lg tracking-tight uppercase tracking-widest">{activeCategory}</h2>
-            <span className="px-3 py-1 bg-zinc-800 rounded-full text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-              {filteredBots.length} Bots Disponibles
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 hover:bg-zinc-800 rounded-xl text-zinc-400 hover:text-white transition-colors lg:hidden"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+            <h2 className="text-white font-black text-lg tracking-tight uppercase">{activeCategory}</h2>
+            <span className="px-3 py-1 bg-zinc-800 rounded-full text-[10px] font-bold text-zinc-500 uppercase tracking-widest hidden sm:inline">
+              {filteredBots.length} Bots
             </span>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 md:gap-6">
             <div className="relative hidden md:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
-              <input 
-                type="text" 
-                placeholder="Buscar bot o herramienta..." 
+              <input
+                type="text"
+                placeholder="Buscar bot o herramienta..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="bg-zinc-900/50 border border-zinc-800 rounded-xl py-2 pl-10 pr-4 text-xs text-zinc-400 focus:outline-none focus:border-emerald-500/50 w-64 transition-all"
               />
             </div>
@@ -248,7 +274,7 @@ export default function Dashboard() {
                 </div>
               </div>
             ) : (
-              <Link to="/bot/quizzes-funis" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">
+              <Link to="/login" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">
                 Iniciar Sesión
               </Link>
             )}
@@ -400,7 +426,28 @@ export default function Dashboard() {
                   <div className="w-1.5 h-8 rounded-full bg-blue-500" />
                   <h2 className="text-2xl font-black text-white tracking-tight uppercase tracking-widest">Todos los Leads Capturados</h2>
                 </div>
-                <button className="px-6 py-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-black uppercase tracking-widest rounded-2xl transition-all flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (leads.length === 0) return;
+                    const headers = ['Nombre', 'Email', 'Quiz', 'Score', 'Fecha'];
+                    const rows = leads.map(l => [
+                      l.name || '',
+                      l.email || '',
+                      savedQuizzes.find(q => q.id === l.quizId)?.title || l.quizId,
+                      l.score,
+                      l.submittedAt?.toDate?.()?.toLocaleDateString() || ''
+                    ]);
+                    const csv = [headers, ...rows].map(r => r.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `leads-producia-${new Date().toISOString().split('T')[0]}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="px-6 py-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-black uppercase tracking-widest rounded-2xl transition-all flex items-center gap-2"
+                >
                   Exportar CSV <Download className="w-4 h-4" />
                 </button>
               </div>
@@ -523,6 +570,9 @@ export default function Dashboard() {
           </section>
         </div>
       </main>
+
+      {/* Onboarding Modal */}
+      <OnboardingModal isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
 
       {/* Lead Details Modal */}
       <AnimatePresence>

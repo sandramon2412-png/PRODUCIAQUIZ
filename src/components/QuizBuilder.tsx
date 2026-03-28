@@ -39,6 +39,26 @@ interface Result {
   maxScore: number;
 }
 
+interface RedirectConfig {
+  enabled: boolean;
+  type: 'none' | 'hotmart' | 'shopify' | 'whatsapp' | 'landing' | 'custom';
+  url: string;
+  whatsappNumber: string;
+  whatsappMessage: string;
+  delaySeconds: number;
+}
+
+interface PixelConfig {
+  enabled: boolean;
+  facebookPixelId: string;
+  trackEvents: {
+    pageView: boolean;
+    quizStart: boolean;
+    quizComplete: boolean;
+    leadSubmit: boolean;
+  };
+}
+
 interface Quiz {
   id: string;
   title: string;
@@ -52,6 +72,8 @@ interface Quiz {
     buttonText: string;
     fields: { id: string; label: string; type: string; required: boolean }[];
   };
+  redirectConfig: RedirectConfig;
+  pixelConfig: PixelConfig;
 }
 
 export default function QuizBuilder() {
@@ -92,6 +114,24 @@ export default function QuizBuilder() {
         { id: 'name', label: 'Nombre Completo', type: 'text', required: true },
         { id: 'email', label: 'Email Principal', type: 'email', required: true }
       ]
+    },
+    redirectConfig: {
+      enabled: false,
+      type: 'none',
+      url: '',
+      whatsappNumber: '',
+      whatsappMessage: 'Hola! Acabo de completar el quiz "{quizTitle}" y me gustaría saber más.',
+      delaySeconds: 3,
+    },
+    pixelConfig: {
+      enabled: false,
+      facebookPixelId: '',
+      trackEvents: {
+        pageView: true,
+        quizStart: true,
+        quizComplete: true,
+        leadSubmit: true,
+      },
     }
   });
 
@@ -503,16 +543,219 @@ export default function QuizBuilder() {
                   </div>
                 </section>
 
+                {/* Redirect Configuration */}
+                <section className="space-y-8">
+                  <div className="flex items-center gap-4">
+                    <div className="w-1.5 h-8 rounded-full bg-orange-500" />
+                    <h2 className="text-2xl font-black text-white tracking-tight uppercase tracking-widest">Redirección Post-Quiz</h2>
+                  </div>
+
+                  <div className="bg-zinc-900/30 border border-zinc-800 rounded-[32px] p-8 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-bold text-white mb-1">Activar Redirección Automática</h3>
+                        <p className="text-xs text-zinc-500">Envía al lead a tu checkout, WhatsApp o landing después de ver su resultado.</p>
+                      </div>
+                      <button
+                        onClick={() => setQuiz(prev => ({
+                          ...prev,
+                          redirectConfig: { ...prev.redirectConfig, enabled: !prev.redirectConfig.enabled }
+                        }))}
+                        className={`w-14 h-8 rounded-full transition-all relative ${quiz.redirectConfig.enabled ? 'bg-emerald-500' : 'bg-zinc-700'}`}
+                      >
+                        <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all ${quiz.redirectConfig.enabled ? 'left-7' : 'left-1'}`} />
+                      </button>
+                    </div>
+
+                    {quiz.redirectConfig.enabled && (
+                      <div className="space-y-6 pt-4 border-t border-zinc-800/50">
+                        <div>
+                          <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-4 mb-3 block">Destino de Redirección</label>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {[
+                              { id: 'hotmart', name: 'Hotmart', icon: Rocket, desc: 'Checkout' },
+                              { id: 'shopify', name: 'Shopify', icon: Layout, desc: 'Tienda' },
+                              { id: 'whatsapp', name: 'WhatsApp', icon: Send, desc: 'Chat directo' },
+                              { id: 'landing', name: 'Landing Page', icon: Monitor, desc: 'Página de ventas' },
+                              { id: 'custom', name: 'URL Custom', icon: ExternalLink, desc: 'Cualquier URL' },
+                            ].map((dest) => (
+                              <button
+                                key={dest.id}
+                                onClick={() => setQuiz(prev => ({
+                                  ...prev,
+                                  redirectConfig: { ...prev.redirectConfig, type: dest.id as any }
+                                }))}
+                                className={`p-4 border rounded-2xl text-left transition-all ${
+                                  quiz.redirectConfig.type === dest.id
+                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                    : 'bg-zinc-950/50 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                                }`}
+                              >
+                                <dest.icon className="w-5 h-5 mb-2" />
+                                <p className="text-xs font-bold text-white">{dest.name}</p>
+                                <p className="text-[10px] text-zinc-500">{dest.desc}</p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {quiz.redirectConfig.type === 'whatsapp' ? (
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-4">Número de WhatsApp (con código de país)</label>
+                              <input
+                                type="text"
+                                value={quiz.redirectConfig.whatsappNumber}
+                                onChange={(e) => setQuiz(prev => ({
+                                  ...prev,
+                                  redirectConfig: { ...prev.redirectConfig, whatsappNumber: e.target.value }
+                                }))}
+                                placeholder="+1234567890"
+                                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-4">Mensaje Predeterminado</label>
+                              <textarea
+                                value={quiz.redirectConfig.whatsappMessage}
+                                onChange={(e) => setQuiz(prev => ({
+                                  ...prev,
+                                  redirectConfig: { ...prev.redirectConfig, whatsappMessage: e.target.value }
+                                }))}
+                                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all h-24 resize-none"
+                              />
+                              <p className="text-[10px] text-zinc-600 ml-4">Usa {'{quizTitle}'} y {'{score}'} como variables dinámicas.</p>
+                            </div>
+                          </div>
+                        ) : quiz.redirectConfig.type !== 'none' ? (
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-4">
+                              {quiz.redirectConfig.type === 'hotmart' ? 'URL de Checkout de Hotmart' :
+                               quiz.redirectConfig.type === 'shopify' ? 'URL de tu Tienda Shopify' :
+                               quiz.redirectConfig.type === 'landing' ? 'URL de tu Landing Page' :
+                               'URL de Destino'}
+                            </label>
+                            <input
+                              type="url"
+                              value={quiz.redirectConfig.url}
+                              onChange={(e) => setQuiz(prev => ({
+                                ...prev,
+                                redirectConfig: { ...prev.redirectConfig, url: e.target.value }
+                              }))}
+                              placeholder="https://..."
+                              className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all"
+                            />
+                          </div>
+                        ) : null}
+
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-4">Demora antes de redirigir (segundos)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="30"
+                            value={quiz.redirectConfig.delaySeconds}
+                            onChange={(e) => setQuiz(prev => ({
+                              ...prev,
+                              redirectConfig: { ...prev.redirectConfig, delaySeconds: parseInt(e.target.value) || 0 }
+                            }))}
+                            className="w-32 bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                {/* Facebook Pixel Config */}
+                <section className="space-y-8">
+                  <div className="flex items-center gap-4">
+                    <div className="w-1.5 h-8 rounded-full bg-blue-500" />
+                    <h2 className="text-2xl font-black text-white tracking-tight uppercase tracking-widest">Facebook Pixel</h2>
+                  </div>
+
+                  <div className="bg-zinc-900/30 border border-zinc-800 rounded-[32px] p-8 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-bold text-white mb-1">Activar Facebook Pixel</h3>
+                        <p className="text-xs text-zinc-500">Trackea conversiones y crea audiencias personalizadas desde tu quiz.</p>
+                      </div>
+                      <button
+                        onClick={() => setQuiz(prev => ({
+                          ...prev,
+                          pixelConfig: { ...prev.pixelConfig, enabled: !prev.pixelConfig.enabled }
+                        }))}
+                        className={`w-14 h-8 rounded-full transition-all relative ${quiz.pixelConfig.enabled ? 'bg-blue-500' : 'bg-zinc-700'}`}
+                      >
+                        <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all ${quiz.pixelConfig.enabled ? 'left-7' : 'left-1'}`} />
+                      </button>
+                    </div>
+
+                    {quiz.pixelConfig.enabled && (
+                      <div className="space-y-6 pt-4 border-t border-zinc-800/50">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-4">ID del Pixel de Facebook</label>
+                          <input
+                            type="text"
+                            value={quiz.pixelConfig.facebookPixelId}
+                            onChange={(e) => setQuiz(prev => ({
+                              ...prev,
+                              pixelConfig: { ...prev.pixelConfig, facebookPixelId: e.target.value }
+                            }))}
+                            placeholder="Ej: 123456789012345"
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all font-mono"
+                          />
+                          <p className="text-[10px] text-zinc-600 ml-4">Lo encuentras en Facebook Business Manager → Events Manager → Pixel ID</p>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-4 mb-3 block">Eventos a Trackear</label>
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              { key: 'pageView', name: 'PageView', desc: 'Al abrir el quiz' },
+                              { key: 'quizStart', name: 'InitiateCheckout', desc: 'Al iniciar el quiz' },
+                              { key: 'quizComplete', name: 'CompleteRegistration', desc: 'Al completar el quiz' },
+                              { key: 'leadSubmit', name: 'Lead', desc: 'Al enviar datos de contacto' },
+                            ].map((event) => (
+                              <button
+                                key={event.key}
+                                onClick={() => setQuiz(prev => ({
+                                  ...prev,
+                                  pixelConfig: {
+                                    ...prev.pixelConfig,
+                                    trackEvents: {
+                                      ...prev.pixelConfig.trackEvents,
+                                      [event.key]: !prev.pixelConfig.trackEvents[event.key as keyof typeof prev.pixelConfig.trackEvents]
+                                    }
+                                  }
+                                }))}
+                                className={`p-4 border rounded-2xl text-left transition-all ${
+                                  quiz.pixelConfig.trackEvents[event.key as keyof typeof quiz.pixelConfig.trackEvents]
+                                    ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                                    : 'bg-zinc-950/50 border-zinc-800 text-zinc-500'
+                                }`}
+                              >
+                                <p className="text-xs font-bold text-white">{event.name}</p>
+                                <p className="text-[10px] text-zinc-500">{event.desc}</p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
                 {/* Integrations Preview */}
                 <section className="space-y-8 pb-20">
                   <div className="flex items-center gap-4">
-                    <div className="w-1.5 h-8 rounded-full bg-orange-500" />
+                    <div className="w-1.5 h-8 rounded-full bg-purple-500" />
                     <h2 className="text-2xl font-black text-white tracking-tight uppercase tracking-widest">Integraciones & Webhooks</h2>
                   </div>
                   <div className="bg-zinc-900/30 border border-zinc-800 rounded-[40px] p-10 border-dashed">
                     <div className="text-center max-w-lg mx-auto space-y-6">
-                      <div className="w-16 h-16 bg-orange-500/10 rounded-2xl flex items-center justify-center mx-auto border border-orange-500/20">
-                        <Zap className="w-8 h-8 text-orange-500" />
+                      <div className="w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center mx-auto border border-purple-500/20">
+                        <Zap className="w-8 h-8 text-purple-500" />
                       </div>
                       <h3 className="text-xl font-bold text-white">Conecta tu Ecosistema</h3>
                       <p className="text-zinc-500 text-sm leading-relaxed">
@@ -520,10 +763,10 @@ export default function QuizBuilder() {
                       </p>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         {[
-                          { name: 'Stripe', icon: CreditCard },
-                          { name: 'PayPal', icon: CreditCard },
                           { name: 'Hotmart', icon: Rocket },
                           { name: 'Shopify', icon: Layout },
+                          { name: 'WhatsApp', icon: Send },
+                          { name: 'Stripe', icon: CreditCard },
                         ].map((platform) => (
                           <div key={platform.name} className="p-4 bg-zinc-900 border border-zinc-800 rounded-2xl flex flex-col items-center gap-3 group hover:border-emerald-500/30 transition-all">
                             <div className="w-8 h-8 bg-zinc-800 rounded-lg flex items-center justify-center">
