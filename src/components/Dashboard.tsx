@@ -37,7 +37,7 @@ export default function Dashboard() {
   const [savedQuizzes, setSavedQuizzes] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
   const [user, setUser] = useState<User | null>(null);
-  const [isGuest, setIsGuest] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,31 +45,27 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const guestMode = localStorage.getItem('producia_guest') === 'true';
-    setIsGuest(guestMode);
-
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser) {
-        // If signed in, clear guest mode
-        localStorage.removeItem('producia_guest');
-        setIsGuest(false);
+      setAuthLoading(false);
+      if (!currentUser) {
+        // Not logged in → send to login
+        navigate('/login', { replace: true });
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
-    if (!user) {
-      // Fallback to localStorage for guest mode
-      const quizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
-      setSavedQuizzes(quizzes);
-      const localLeads = JSON.parse(localStorage.getItem('producia_leads') || '[]');
-      setLeads(localLeads);
-      return;
-    }
+    if (!user) return;
 
-    // Real-time sync with Firestore
+    // Load from localStorage as immediate fallback
+    const localQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
+    setSavedQuizzes(localQuizzes);
+    const localLeads = JSON.parse(localStorage.getItem('producia_leads') || '[]');
+    setLeads(localLeads);
+
+    // Then sync with Firestore
     let unsubscribe: () => void = () => {};
     let unsubscribeLeads: () => void = () => {};
 
@@ -87,10 +83,7 @@ export default function Dashboard() {
         }));
         setSavedQuizzes(quizzes);
       }, (error) => {
-        console.error('Firestore quizzes error:', error);
-        // Fallback to localStorage on error
-        const quizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
-        setSavedQuizzes(quizzes);
+        console.warn('Firestore quizzes sync failed, using local data:', error.message);
       });
 
       const leadsQuery = query(
@@ -106,14 +99,10 @@ export default function Dashboard() {
         }));
         setLeads(leadsData);
       }, (error) => {
-        console.error('Firestore leads error:', error);
-        const localLeads = JSON.parse(localStorage.getItem('producia_leads') || '[]');
-        setLeads(localLeads);
+        console.warn('Firestore leads sync failed, using local data:', error.message);
       });
     } catch (error) {
-      console.error('Firestore connection error:', error);
-      const quizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
-      setSavedQuizzes(quizzes);
+      console.warn('Firestore connection failed, using local data');
     }
 
     return () => {
@@ -121,6 +110,21 @@ export default function Dashboard() {
       unsubscribeLeads();
     };
   }, [user]);
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-zinc-500 text-sm font-bold">Cargando Producia OS...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not logged in, don't render dashboard (redirect happens in useEffect)
+  if (!user) return null;
 
   const handleLogout = async () => {
     try {
