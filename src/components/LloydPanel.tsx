@@ -108,6 +108,52 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
     window.dispatchEvent(new CustomEvent('trigger-download'));
   };
 
+  const captureScreen = async () => {
+    if (isLoading) return;
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: 'screen' } as any,
+      });
+
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      await video.play();
+
+      // Wait a frame for video to render
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(video, 0, 0);
+
+      // Stop the stream
+      stream.getTracks().forEach(track => track.stop());
+
+      // Flash effect
+      setIsFlashing(true);
+      setTimeout(() => setIsFlashing(false), 300);
+
+      // Convert to base64
+      const base64 = canvas.toDataURL('image/png').split(',')[1];
+
+      // Add user message
+      setChat(prev => [...prev, { role: 'user' as const, text: '📸 Captura de pantalla tomada. Analizando...' }]);
+      setIsLoading(true);
+
+      // Send to Claude Vision
+      const response = await aiService.analyzeScreenshot(base64);
+      setChat(prev => [...prev, { role: 'model' as const, text: response }]);
+    } catch (error: any) {
+      if (error.name !== 'NotAllowedError') {
+        setChat(prev => [...prev, { role: 'model' as const, text: 'Error al capturar la pantalla. Asegurate de dar permiso cuando el navegador lo solicite.' }]);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSend = async (text?: string, isScreenshot = false) => {
     const msgToSend = text || message;
     if (!msgToSend.trim() && !isScreenshot || isLoading) return;
@@ -605,8 +651,15 @@ Responde siempre en español, sé directo y práctico. No uses relleno. Ayuda di
                 }
               }}
               placeholder={activeTab === 'todo' ? "Nueva tarea..." : "Pregunta a Lloyd..."}
-              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-4 pr-4 text-sm text-white focus:outline-none focus:border-purple-500/50 transition-all placeholder:text-zinc-600"
+              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-purple-500/50 transition-all placeholder:text-zinc-600"
             />
+            <button
+              onClick={captureScreen}
+              title="Capturar pantalla"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-zinc-500 hover:text-emerald-400 transition-colors"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
           </div>
           
           <div className="flex items-center gap-2">

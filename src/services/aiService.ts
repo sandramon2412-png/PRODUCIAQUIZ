@@ -89,9 +89,64 @@ async function callClaude(prompt: string, systemInstruction: string, history: Me
   return data.content?.[0]?.text || '';
 }
 
+async function callClaudeWithImage(prompt: string, systemInstruction: string, imageBase64: string): Promise<string> {
+  if (!CLAUDE_API_KEY) throw new Error('Claude API key no configurada');
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': CLAUDE_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 4096,
+      system: systemInstruction,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: 'image/png',
+              data: imageBase64,
+            },
+          },
+          {
+            type: 'text',
+            text: prompt,
+          },
+        ],
+      }],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(`Claude Vision error ${response.status}: ${errorData}`);
+  }
+
+  const data = await response.json();
+  return data.content?.[0]?.text || '';
+}
+
 export class AIService {
   hasApiKeys(): boolean {
     return !!(GROQ_API_KEY || CLAUDE_API_KEY);
+  }
+
+  async analyzeScreenshot(imageBase64: string, customPrompt?: string): Promise<string> {
+    if (!CLAUDE_API_KEY) {
+      return 'Se necesita Claude API key para analizar imagenes.';
+    }
+
+    const prompt = customPrompt || 'Analiza esta captura de pantalla. Describe lo que ves y dame recomendaciones practicas para mejorar la oferta, el copy, el diseno o la estrategia que se muestra.';
+    const systemInstruction = `Eres Lloyd, el asistente de IA de PRODUCIA. El usuario acaba de tomar una captura de pantalla de su computadora. Analiza lo que ves en la imagen y da consejos practicos y accionables. Responde en espanol. Se directo y util.`;
+
+    return callClaudeWithImage(prompt, systemInstruction, imageBase64);
   }
 
   async generateModelAnalysis(productDescription: string, history: Message[] = []) {
