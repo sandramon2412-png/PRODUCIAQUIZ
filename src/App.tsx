@@ -97,25 +97,31 @@ import LandingPage from './components/LandingPage';
 
 const AppContent = () => {
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  // Detect PWA standalone mode
-  const [isStandalone] = useState(() => {
-    return window.matchMedia('(display-mode: standalone)').matches ||
-           (window.navigator as any).standalone ||
-           document.referrer.includes('android-app://');
-  });
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
-    if (isStandalone && location.pathname !== '/lloyd') {
-      navigate('/lloyd', { replace: true });
-    }
+    // Multiple detection methods for PWA standalone mode
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: minimal-ui)').matches ||
+      (window.navigator as any).standalone === true ||
+      !window.menubar?.visible ||
+      document.referrer.includes('android-app://');
+
+    if (standalone) setIsStandalone(true);
+
+    // Listen for display mode changes
+    const mq = window.matchMedia('(display-mode: standalone)');
+    const onchange = (e: MediaQueryListEvent) => { if (e.matches) setIsStandalone(true); };
+    mq.addEventListener('change', onchange);
 
     const handleTrigger = () => setIsDownloadModalOpen(true);
     window.addEventListener('trigger-download', handleTrigger);
-    return () => window.removeEventListener('trigger-download', handleTrigger);
-  }, [navigate, isStandalone, location.pathname]);
+    return () => {
+      window.removeEventListener('trigger-download', handleTrigger);
+      mq.removeEventListener('change', onchange);
+    };
+  }, []);
 
   // In standalone PWA mode, only show Lloyd
   if (isStandalone) {
