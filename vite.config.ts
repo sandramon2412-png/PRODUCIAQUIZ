@@ -7,9 +7,6 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   
-  // Ensure we have the API key from either .env or process.env
-  const GEMINI_API_KEY = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || '';
-
   return {
     plugins: [
       react(), 
@@ -82,9 +79,7 @@ export default defineConfig(({mode}) => {
         }
       })
     ],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(GEMINI_API_KEY),
-    },
+    define: {},
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
