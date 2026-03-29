@@ -70,7 +70,7 @@ export default defineConfig(({mode}) => {
         }
       })
     ],
-    base: '/',
+    base: './',
     define: {},
     resolve: {
       alias: {
