@@ -18,6 +18,7 @@ import PublicQuiz from './components/PublicQuiz';
 import ChatBot from './components/ChatBot';
 import PricingPage from './components/PricingPage';
 import AuthPage from './components/AuthPage';
+import SettingsPage from './components/SettingsPage';
 import { voiceService } from './services/voiceService';
 import { aiService } from './services/aiService';
 import { LloydPanel } from './components/LloydPanel';
@@ -126,6 +127,7 @@ const AppContent = () => {
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/lloyd" element={<LloydStandalone />} />
         <Route path="/bot/modelador" element={<ModeladorBot />} />
 

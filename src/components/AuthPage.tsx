@@ -1,55 +1,83 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Sparkles, ShieldCheck, Loader2, Zap, ArrowRight, User, AlertCircle } from 'lucide-react';
-import { auth, googleProvider, signInWithPopup } from '../firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { Sparkles, ShieldCheck, Loader2, Zap, ArrowRight, AlertCircle, Crown, Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import { supabase } from '../supabase';
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isEmailLoading, setIsEmailLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
         navigate('/dashboard', { replace: true });
       }
     });
-    return () => unsubscribe();
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError('');
     try {
-      await signInWithPopup(auth, googleProvider);
-      navigate('/dashboard');
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+      if (error) throw error;
     } catch (err: any) {
       console.error('Auth error:', err);
-      if (err.code === 'auth/popup-closed-by-user') {
-        setError('Ventana cerrada. Intenta de nuevo.');
-      } else if (err.code === 'auth/popup-blocked') {
-        setError('El navegador bloqueó la ventana. Permite popups para este sitio e intenta de nuevo.');
-      } else if (err.code === 'auth/unauthorized-domain') {
-        setError(`Dominio no autorizado. Puedes entrar como invitado o configurar tu propio Firebase (ver guía abajo).`);
-        setShowSetupGuide(true);
-      } else if (err.code === 'auth/network-request-failed') {
-        setError('Error de red. Verifica tu conexión a internet.');
-      } else {
-        setError(`Error de autenticación. Puedes continuar como invitado mientras configuras Firebase.`);
-        setShowSetupGuide(true);
-      }
+      setError(err.message || 'Error al iniciar sesión. Intenta de nuevo.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGuestAccess = () => {
-    localStorage.setItem('producia_guest', 'true');
-    localStorage.setItem('producia_guest_name', 'Invitado');
-    navigate('/dashboard');
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsEmailLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      if (mode === 'register') {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/dashboard`,
+          },
+        });
+        if (error) throw error;
+        setSuccess('Revisa tu correo para confirmar tu cuenta.');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            throw new Error('Email o contraseña incorrectos.');
+          }
+          throw error;
+        }
+        navigate('/dashboard');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error al procesar. Intenta de nuevo.');
+    } finally {
+      setIsEmailLoading(false);
+    }
   };
 
   return (
@@ -79,30 +107,19 @@ export default function AuthPage() {
               </div>
             </Link>
 
-            <h1 className="text-3xl font-black tracking-tighter mb-3">Bienvenido</h1>
-            <p className="text-zinc-500 text-sm">Accede a tu ecosistema de IA para productos digitales</p>
-          </div>
-
-          {/* Guest Access - Primary CTA */}
-          <button
-            onClick={handleGuestAccess}
-            className="w-full py-5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 shadow-xl shadow-purple-500/20 mb-4"
-          >
-            <Zap className="w-5 h-5" />
-            Entrar Ahora
-          </button>
-
-          <div className="flex items-center gap-4 my-6">
-            <div className="flex-1 h-px bg-zinc-800" />
-            <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">o inicia sesión</span>
-            <div className="flex-1 h-px bg-zinc-800" />
+            <h1 className="text-3xl font-black tracking-tighter mb-3">
+              {mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
+            </h1>
+            <p className="text-zinc-500 text-sm">
+              {mode === 'login' ? 'Accede a tu ecosistema de IA' : 'Únete y empieza a crear productos digitales'}
+            </p>
           </div>
 
           {/* Google Sign In */}
           <button
             onClick={handleGoogleLogin}
             disabled={isLoading}
-            className="w-full py-4 bg-white hover:bg-zinc-100 text-black rounded-2xl font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg disabled:opacity-50 disabled:hover:scale-100"
+            className="w-full py-4 bg-white hover:bg-zinc-100 text-black rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 shadow-xl shadow-white/10 disabled:opacity-50 disabled:hover:scale-100"
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -118,52 +135,120 @@ export default function AuthPage() {
               </>
             )}
           </button>
-          <p className="text-[10px] text-zinc-600 text-center mt-2">Guarda tus quizzes en la nube y sincroniza entre dispositivos</p>
 
+          {/* Divider */}
+          <div className="flex items-center gap-4 my-6">
+            <div className="flex-1 h-px bg-zinc-800" />
+            <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">o con email</span>
+            <div className="flex-1 h-px bg-zinc-800" />
+          </div>
+
+          {/* Email/Password Form */}
+          <form onSubmit={handleEmailAuth} className="space-y-4">
+            <div>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="tu@email.com"
+                  required
+                  className="w-full py-4 pl-12 pr-4 bg-zinc-800/50 border border-zinc-700/50 rounded-2xl text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-purple-500/50 transition-colors"
+                />
+              </div>
+            </div>
+            <div>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Contraseña (mín. 6 caracteres)"
+                  required
+                  minLength={6}
+                  className="w-full py-4 pl-12 pr-12 bg-zinc-800/50 border border-zinc-700/50 rounded-2xl text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-purple-500/50 transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={isEmailLoading}
+              className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {isEmailLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : mode === 'login' ? (
+                'Entrar'
+              ) : (
+                'Crear Cuenta'
+              )}
+            </button>
+          </form>
+
+          {/* Toggle mode */}
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); setSuccess(''); }}
+              className="text-xs text-zinc-500 hover:text-purple-400 transition-colors"
+            >
+              {mode === 'login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
+            </button>
+          </div>
+
+          {/* Error */}
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl"
+              className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl"
             >
               <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-300">{error}</p>
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-300">{error}</p>
               </div>
             </motion.div>
           )}
 
-          {/* Firebase Setup Guide */}
-          {showSetupGuide && (
+          {/* Success */}
+          {success && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="mt-4 p-5 bg-zinc-800/50 border border-zinc-700/50 rounded-2xl space-y-3"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl"
             >
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Para activar Google Login en tu dominio:</p>
-              <ol className="text-xs text-zinc-500 space-y-2 list-decimal list-inside">
-                <li>Ve a <span className="text-white font-bold">console.firebase.google.com</span> y crea un proyecto gratis</li>
-                <li>Activa <span className="text-white font-bold">Authentication → Sign-in method → Google</span></li>
-                <li>En <span className="text-white font-bold">Settings → Authorized domains</span> agrega tu dominio Vercel</li>
-                <li>Copia las credenciales y actualiza <code className="bg-zinc-900 px-1 rounded text-emerald-400">firebase-applet-config.json</code></li>
-              </ol>
-              <p className="text-[10px] text-zinc-600">Mientras tanto, puedes usar el modo invitado sin problemas. Tus datos se guardan localmente.</p>
+              <div className="flex items-start gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-emerald-300">{success}</p>
+              </div>
             </motion.div>
           )}
 
           {/* What you get */}
           <div className="mt-8 space-y-3 border-t border-zinc-800/50 pt-6">
-            <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest text-center mb-4">Acceso completo incluye</p>
+            <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest text-center mb-4">Con tu cuenta obtienes</p>
             {[
-              { icon: Sparkles, text: '16 Bots de IA especializados' },
-              { icon: ShieldCheck, text: 'Quiz Funnels con Pixel y redirección' },
-              { icon: Zap, text: 'Lloyd AI como copiloto de estrategia' },
+              { icon: Sparkles, text: '17 Bots de IA especializados', sub: 'Copy, Ads, Productos, Sistemas' },
+              { icon: ShieldCheck, text: 'Quiz Funnels con Pixel & Redirect', sub: 'Hotmart, Shopify, WhatsApp' },
+              { icon: Zap, text: 'Lloyd AI como copiloto 24/7', sub: 'Estrategia de marketing en tiempo real' },
+              { icon: Crown, text: 'Tus leads y datos guardados', sub: 'Sincronizados en la nube' },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-3 p-3 bg-zinc-800/30 rounded-xl">
-                <div className="w-8 h-8 bg-emerald-500/10 rounded-lg flex items-center justify-center">
-                  <item.icon className="w-4 h-4 text-emerald-500" />
+                <div className="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center shrink-0">
+                  <item.icon className="w-5 h-5 text-emerald-500" />
                 </div>
-                <span className="text-sm text-zinc-400">{item.text}</span>
+                <div>
+                  <span className="text-sm text-zinc-300 font-bold block">{item.text}</span>
+                  <span className="text-[10px] text-zinc-600">{item.sub}</span>
+                </div>
               </div>
             ))}
           </div>
