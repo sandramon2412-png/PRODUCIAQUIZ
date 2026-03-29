@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LloydPanel } from './LloydPanel';
-import { Monitor, X, Minus, Square } from 'lucide-react';
+import { Monitor, X } from 'lucide-react';
 
 export default function LloydStandalone() {
   const [isStandalone, setIsStandalone] = useState(false);
@@ -108,28 +108,13 @@ export default function LloydStandalone() {
         )}
       </AnimatePresence>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full h-full sm:max-w-md sm:max-h-[700px] z-10 relative p-0 sm:p-4"
+        className="w-full h-full z-10 relative"
       >
-        <div className="w-full h-full bg-zinc-900/40 backdrop-blur-3xl border-0 sm:border border-white/10 rounded-none sm:rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col">
-          {/* Custom Title Bar for Standalone Feel */}
-          <div className="h-10 border-b border-white/5 flex items-center justify-between px-6 bg-white/5 shrink-0 select-none">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500/30 border border-red-500/20" />
-              <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/30 border border-yellow-500/20" />
-              <div className="w-2.5 h-2.5 rounded-full bg-green-500/30 border border-green-500/20" />
-            </div>
-            <span className="text-[9px] uppercase tracking-[0.2em] text-white/20 font-black">Lloyd Assistant</span>
-            <div className="flex items-center gap-3 text-white/10">
-              <Minus className="w-3 h-3" />
-              <Square className="w-2.5 h-2.5" />
-              <X className="w-3 h-3" />
-            </div>
-          </div>
-
+        <div className="w-full h-full bg-zinc-900/40 backdrop-blur-3xl overflow-hidden flex flex-col">
           <div className="flex-1 overflow-hidden">
             <LloydPanel isStandalone={true} />
           </div>
