@@ -487,6 +487,11 @@ IMPORTANTE: No puedes navegar URLs. Si el usuario te da un link, pídele que peg
 };
 
 export default function App() {
+  // Electron: render Lloyd directly without Router (file:// doesn't support BrowserRouter)
+  if ((window as any).electronAPI?.isElectron) {
+    return <LloydElectron />;
+  }
+
   return (
     <Router>
       <AppContent />
