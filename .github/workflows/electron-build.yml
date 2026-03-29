@@ -2,8 +2,14 @@ name: Build Electron App
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+    paths:
+      - 'electron-main.js'
+      - 'electron-preload.js'
+      - 'src/**'
+      - 'package.json'
+      - '.github/workflows/electron-build.yml'
   workflow_dispatch:
 
 jobs:
@@ -54,6 +60,8 @@ jobs:
           path: artifacts
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: v1.0.0
+          name: Lloyd Assistant v1.0.0
           files: |
             artifacts/windows-installer/*.exe
             artifacts/mac-installer/*.dmg
