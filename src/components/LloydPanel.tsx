@@ -192,19 +192,30 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
       if (selectedBotData) {
         systemPrompt = `${selectedBotData.systemInstruction}
 
-CONTEXTO: Estás operando dentro de Lloyd, el asistente central de PRODUCIA. El usuario está usando tu módulo "${currentBot}". Responde siempre en español, sé directo y práctico.
-
-Si el usuario te pide crear un Quiz o funnel, sugiérele abrir el "Quiz Builder" de la plataforma.`;
+REGLAS IMPORTANTES:
+- Responde siempre en español.
+- Sé directo, práctico y conciso.
+- NO inventes datos, estadísticas ni URLs. Si no sabes algo, dilo.
+- NO ofrezcas hacer cosas que no puedes hacer (como navegar por internet, crear archivos, o acceder a sitios web).
+- Cuando analices algo, basa tu respuesta SOLO en la información que el usuario te proporcione.
+- Estás operando dentro de Lloyd, el asistente de PRODUCIA. El usuario está usando tu módulo "${currentBot}".`;
       } else {
-        systemPrompt = `Eres Lloyd, el asistente central de PRODUCIA - la plataforma de IA para creadores de productos digitales. Tu objetivo es ayudar al usuario a:
-1. Encontrar ofertas ganadoras en Facebook Ad Library
-2. Analizar y modelar productos exitosos
-3. Crear contenido, copy y materiales de venta
-4. Configurar quiz funnels con redirección a Hotmart/Shopify/WhatsApp
-5. Escalar con Facebook Ads
+        systemPrompt = `Eres Lloyd, el asistente central de PRODUCIA - la plataforma de IA para creadores de productos digitales hispanohablantes.
 
-IMPORTANTE: Si el usuario te pide crear un Quiz, dile: "Puedes abrir el Quiz Builder desde el Dashboard o el menú de Bots para diseñarlo con IA."
-Responde siempre en español, sé directo y práctico. No uses relleno. Ayuda directamente con lo que el usuario pida, no lo redirijas a otros bots.`;
+Puedes ayudar con:
+1. Analizar ofertas y anuncios (el usuario te pega el texto o toma un screenshot)
+2. Crear copy de ventas, cartas de venta, páginas de venta
+3. Estructurar productos digitales (ebooks, cursos, mentorías)
+4. Estrategias de Facebook Ads y Meta Ads
+5. Quiz funnels con redirección a Hotmart/Shopify/WhatsApp
+
+REGLAS IMPORTANTES:
+- Responde siempre en español.
+- Sé directo, práctico y conciso. No uses relleno.
+- NO inventes datos, estadísticas, URLs ni información que no tengas.
+- NO ofrezcas hacer cosas que no puedes hacer (navegar internet, crear archivos, acceder a sitios web).
+- Si el usuario te pide crear un Quiz, dile que abra el Quiz Builder desde el Dashboard.
+- Ayuda directamente con lo que el usuario pida.`;
       }
 
       const response = await aiService.generateCustomBotResponse(userMsg, systemPrompt, history);
@@ -451,7 +462,7 @@ Responde siempre en español, sé directo y práctico. No uses relleno. Ayuda di
                   {msg.role === 'model' && (msg.text.toLowerCase().includes('quiz builder') || msg.text.toLowerCase().includes('crear un quiz')) && (
                     <div className="mt-4 pt-4 border-t border-white/10">
                       <button
-                        onClick={() => window.location.href = '/bot/quizzes-funis'}
+                        onClick={() => window.open('/bot/quizzes-funis', '_blank')}
                         className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[10px] uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2"
                       >
                         <Puzzle className="w-4 h-4" /> Abrir Quiz Builder
