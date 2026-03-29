@@ -22,7 +22,7 @@ export default defineConfig(({mode}) => {
           start_url: "/lloyd",
           scope: "/",
           display: "standalone",
-          display_override: ["window-controls-overlay", "minimal-ui", "standalone"],
+          display_override: ["standalone", "minimal-ui"],
           theme_color: "#050505",
           background_color: "#050505",
           orientation: "any",
