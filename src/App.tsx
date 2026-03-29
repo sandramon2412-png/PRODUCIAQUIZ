@@ -98,21 +98,29 @@ import LandingPage from './components/LandingPage';
 const AppContent = () => {
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Detect PWA standalone mode
+  const [isStandalone] = useState(() => {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           (window.navigator as any).standalone ||
+           document.referrer.includes('android-app://');
+  });
 
   useEffect(() => {
-    // Check if we are in standalone mode (PWA)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                        (window.navigator as any).standalone || 
-                        document.referrer.includes('android-app://');
-
-    if (isStandalone && (window.location.pathname === '/' || window.location.pathname === '/dashboard')) {
+    if (isStandalone && location.pathname !== '/lloyd') {
       navigate('/lloyd', { replace: true });
     }
 
     const handleTrigger = () => setIsDownloadModalOpen(true);
     window.addEventListener('trigger-download', handleTrigger);
     return () => window.removeEventListener('trigger-download', handleTrigger);
-  }, [navigate]);
+  }, [navigate, isStandalone, location.pathname]);
+
+  // In standalone PWA mode, only show Lloyd
+  if (isStandalone) {
+    return <LloydStandalone />;
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-200 font-sans selection:bg-purple-500/30">
