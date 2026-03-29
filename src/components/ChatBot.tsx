@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Sparkles, Bot, User, Loader2, Image as ImageIcon, Download, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Send, Sparkles, Bot, User, Loader2, Image as ImageIcon, Download, Copy, Check, type LucideIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { aiService } from '../services/aiService';
 import { clsx, type ClassValue } from 'clsx';
@@ -30,7 +30,14 @@ export default function ChatBot({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleCopyMessage = (text: string, index: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -136,12 +143,12 @@ export default function ChatBot({
         )}
 
         {messages.map((msg, i) => (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            key={i} 
+            key={i}
             className={cn(
-              "flex gap-4 max-w-4xl",
+              "flex gap-4 max-w-4xl group",
               msg.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto"
             )}
           >
@@ -151,19 +158,19 @@ export default function ChatBot({
             )}>
               {msg.role === 'user' ? <User className="w-4 h-4 text-zinc-400" /> : <Bot className="w-4 h-4 text-white" />}
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 relative">
               <div className={cn(
                 "p-4 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap",
-                msg.role === 'user' 
-                  ? "bg-zinc-800 text-zinc-200 rounded-tr-none" 
+                msg.role === 'user'
+                  ? "bg-zinc-800 text-zinc-200 rounded-tr-none"
                   : "bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-tl-none"
               )}>
                 {msg.text && msg.text}
                 {msg.image && (
                   <div className="space-y-3">
                     <img src={msg.image} alt="Generated Creative" className="rounded-xl w-full max-w-sm border border-zinc-800 shadow-2xl" referrerPolicy="no-referrer" />
-                    <a 
-                      href={msg.image} 
+                    <a
+                      href={msg.image}
                       download="creative.png"
                       className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-xs font-bold transition-all"
                     >
@@ -172,6 +179,21 @@ export default function ChatBot({
                   </div>
                 )}
               </div>
+              {/* Copy button */}
+              {msg.text && (
+                <button
+                  onClick={() => handleCopyMessage(msg.text!, i)}
+                  className={cn(
+                    "absolute -bottom-2 right-2 p-1.5 rounded-lg text-[10px] flex items-center gap-1 transition-all",
+                    copiedIndex === i
+                      ? "bg-emerald-500/20 text-emerald-400"
+                      : "bg-zinc-800/80 text-zinc-600 hover:text-white opacity-0 group-hover:opacity-100"
+                  )}
+                  title="Copiar texto"
+                >
+                  {copiedIndex === i ? <><Check className="w-3 h-3" /> Copiado</> : <><Copy className="w-3 h-3" /> Copiar</>}
+                </button>
+              )}
               
               {/* Image Generation Trigger for Model Responses */}
               {msg.role === 'model' && msg.text && canGenerateImage && i === messages.length - 1 && !isLoading && (
