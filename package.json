@@ -4,7 +4,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "main": "electron-main.js",
+  "main": "electron-main.cjs",
   "description": "Lloyd - Tu asistente de IA para productos digitales",
   "author": "PRODUCIA Intelligence",
   "scripts": {
@@ -14,7 +14,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && cross-env ELECTRON_START_URL=http://localhost:3000 electron .\"",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && cross-env ELECTRON_START_URL=http://localhost:3000 electron electron-main.cjs\"",
     "electron:build": "npm run build && electron-builder",
     "electron:build:win": "npm run build && electron-builder --win",
     "electron:build:mac": "npm run build && electron-builder --mac",
@@ -28,8 +28,8 @@
     },
     "files": [
       "dist/**/*",
-      "electron-main.js",
-      "electron-preload.js"
+      "electron-main.cjs",
+      "electron-preload.cjs"
     ],
     "win": {
       "target": [

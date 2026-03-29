@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'electron-main.js'
-      - 'electron-preload.js'
+      - 'electron-main.cjs'
+      - 'electron-preload.cjs'
       - 'src/**'
       - 'package.json'
       - '.github/workflows/electron-build.yml'
