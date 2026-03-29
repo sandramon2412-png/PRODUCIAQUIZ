@@ -235,10 +235,10 @@ Responde siempre en español, sé directo y práctico. No uses relleno. Ayuda di
 
   return (
     <div className={cn(
-      "backdrop-blur-3xl saturate-[180%] border border-white/30 flex flex-col overflow-hidden rounded-[32px] transition-all duration-500",
-      isStandalone 
-        ? "w-full h-full bg-white/[0.02] shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)]" 
-        : "w-[400px] h-[600px] bg-white/[0.08] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)]"
+      "backdrop-blur-3xl saturate-[180%] flex flex-col overflow-hidden transition-all duration-500",
+      isStandalone
+        ? "w-full h-full bg-white/[0.02] border-0 rounded-none"
+        : "w-[400px] h-[600px] bg-white/[0.08] border border-white/30 rounded-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)]"
     )}>
       {/* Screenshot Flash Effect */}
       <AnimatePresence>
