@@ -108,6 +108,57 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
     window.dispatchEvent(new CustomEvent('trigger-download'));
   };
 
+  const captureScreen = async () => {
+    if (isLoading) return;
+    try {
+      let base64: string | null = null;
+
+      // Use Electron native capture if available (no permission dialog)
+      if ((window as any).electronAPI?.captureScreenshot) {
+        base64 = await (window as any).electronAPI.captureScreenshot();
+      } else {
+        // Fallback: browser getDisplayMedia (asks permission)
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: { displaySurface: 'screen' } as any,
+        });
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        await video.play();
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(video, 0, 0);
+        stream.getTracks().forEach(track => track.stop());
+        base64 = canvas.toDataURL('image/png').split(',')[1];
+      }
+
+      if (!base64) {
+        setChat(prev => [...prev, { role: 'model' as const, text: 'No se pudo capturar la pantalla.' }]);
+        return;
+      }
+
+      // Flash effect
+      setIsFlashing(true);
+      setTimeout(() => setIsFlashing(false), 300);
+
+      // Add user message
+      setChat(prev => [...prev, { role: 'user' as const, text: 'Captura de pantalla tomada. Analizando...' }]);
+      setIsLoading(true);
+
+      // Send to Claude Vision
+      const response = await aiService.analyzeScreenshot(base64);
+      setChat(prev => [...prev, { role: 'model' as const, text: response }]);
+    } catch (error: any) {
+      if (error.name !== 'NotAllowedError') {
+        setChat(prev => [...prev, { role: 'model' as const, text: 'Error al capturar la pantalla. Asegurate de dar permiso cuando el navegador lo solicite.' }]);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSend = async (text?: string, isScreenshot = false) => {
     const msgToSend = text || message;
     if (!msgToSend.trim() && !isScreenshot || isLoading) return;

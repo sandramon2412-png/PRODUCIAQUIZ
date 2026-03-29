@@ -23,6 +23,7 @@ import { voiceService } from './services/voiceService';
 import { aiService } from './services/aiService';
 import { LloydPanel } from './components/LloydPanel';
 import LloydStandalone from './components/LloydStandalone';
+import LloydElectron from './components/LloydElectron';
 import { DownloadModal } from './components/DownloadModal';
 import {
   FileText, Megaphone, PenTool, Search, ScrollText,
@@ -113,6 +114,20 @@ const AppContent = () => {
     window.addEventListener('trigger-download', handleTrigger);
     return () => window.removeEventListener('trigger-download', handleTrigger);
   }, [navigate]);
+
+  // In Electron, only show Lloyd Electron
+  if ((window as any).electronAPI?.isElectron) {
+    return <LloydElectron />;
+  }
+
+  // In standalone PWA mode, only show Lloyd
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                      window.matchMedia('(display-mode: minimal-ui)').matches ||
+                      (window.navigator as any).standalone ||
+                      !(window as any).menubar?.visible;
+  if (isStandalone) {
+    return <LloydStandalone />;
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-200 font-sans selection:bg-purple-500/30">

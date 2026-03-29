@@ -79,6 +79,7 @@ export default defineConfig(({mode}) => {
         }
       })
     ],
+    base: './',
     define: {},
     resolve: {
       alias: {

@@ -1,9 +1,12 @@
 {
-  "name": "react-example",
+  "name": "lloyd-assistant",
+  "productName": "Lloyd Assistant",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "main": "electron-main.js",
+  "description": "Lloyd - Tu asistente de IA para productos digitales",
+  "author": "PRODUCIA Intelligence",
   "scripts": {
     "dev": "tsx server.ts",
     "start": "node server.ts",
@@ -12,7 +15,46 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && cross-env ELECTRON_START_URL=http://localhost:3000 electron .\"",
-    "electron:build": "npm run build && electron-builder"
+    "electron:build": "npm run build && electron-builder",
+    "electron:build:win": "npm run build && electron-builder --win",
+    "electron:build:mac": "npm run build && electron-builder --mac",
+    "electron:build:all": "npm run build && electron-builder --win --mac"
+  },
+  "build": {
+    "appId": "com.producia.lloyd",
+    "productName": "Lloyd Assistant",
+    "directories": {
+      "output": "electron-dist"
+    },
+    "files": [
+      "dist/**/*",
+      "electron-main.js",
+      "electron-preload.js"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": null
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "category": "public.app-category.productivity"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "shortcutName": "Lloyd Assistant"
+    }
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
