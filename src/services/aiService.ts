@@ -3,7 +3,15 @@ import Groq from 'groq-sdk';
 const GROQ_API_KEY = (import.meta as any).env?.VITE_GROQ_API_KEY || '';
 const CLAUDE_API_KEY = (import.meta as any).env?.VITE_CLAUDE_API_KEY || '';
 
-const groq = new Groq({ apiKey: GROQ_API_KEY, dangerouslyAllowBrowser: true });
+// Lazy init - only create when needed and key exists
+let groqClient: Groq | null = null;
+function getGroqClient(): Groq | null {
+  if (!GROQ_API_KEY) return null;
+  if (!groqClient) {
+    groqClient = new Groq({ apiKey: GROQ_API_KEY, dangerouslyAllowBrowser: true });
+  }
+  return groqClient;
+}
 
 // Groq model (fast, free)
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
@@ -16,6 +24,9 @@ interface Message {
 }
 
 async function callGroq(prompt: string, systemInstruction: string, history: Message[] = []): Promise<string> {
+  const client = getGroqClient();
+  if (!client) throw new Error('Groq API key no configurada');
+
   const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
     { role: 'system', content: systemInstruction },
   ];
@@ -29,7 +40,7 @@ async function callGroq(prompt: string, systemInstruction: string, history: Mess
 
   messages.push({ role: 'user', content: prompt });
 
-  const response = await groq.chat.completions.create({
+  const response = await client.chat.completions.create({
     model: GROQ_MODEL,
     messages,
     temperature: 0.7,
@@ -40,6 +51,8 @@ async function callGroq(prompt: string, systemInstruction: string, history: Mess
 }
 
 async function callClaude(prompt: string, systemInstruction: string, history: Message[] = []): Promise<string> {
+  if (!CLAUDE_API_KEY) throw new Error('Claude API key no configurada');
+
   const messages: { role: 'user' | 'assistant'; content: string }[] = [];
 
   for (const msg of history) {
@@ -68,7 +81,8 @@ async function callClaude(prompt: string, systemInstruction: string, history: Me
   });
 
   if (!response.ok) {
-    throw new Error(`Claude API error: ${response.status}`);
+    const errorData = await response.text();
+    throw new Error(`Claude API error ${response.status}: ${errorData}`);
   }
 
   const data = await response.json();
@@ -76,6 +90,10 @@ async function callClaude(prompt: string, systemInstruction: string, history: Me
 }
 
 export class AIService {
+  hasApiKeys(): boolean {
+    return !!(GROQ_API_KEY || CLAUDE_API_KEY);
+  }
+
   async generateModelAnalysis(productDescription: string, history: Message[] = []) {
     const systemInstruction = `Eres el Bot Modelador de PRODUCIA, especializado en ayudar a vendedores de productos digitales hispanos a modelar productos ganadores.
 
@@ -102,31 +120,37 @@ IMPORTANTE: No puedes navegar por URLs directamente. Si el usuario te da un link
   }
 
   async generateCustomBotResponse(prompt: string, systemInstruction: string, history: Message[] = []): Promise<string> {
+    if (!this.hasApiKeys()) {
+      return 'Error de configuracion: Las API keys de IA no estan configuradas. El administrador debe agregar VITE_GROQ_API_KEY y/o VITE_CLAUDE_API_KEY en las variables de entorno de Vercel y redesplegar.';
+    }
+
     // Try Groq first (fast, free)
-    try {
-      console.log('🚀 Usando Groq (principal)...');
-      const response = await callGroq(prompt, systemInstruction, history);
-      if (response) return response;
-    } catch (error) {
-      console.warn('⚠️ Groq falló, intentando con Claude...', error);
+    if (GROQ_API_KEY) {
+      try {
+        console.log('Usando Groq (principal)...');
+        const response = await callGroq(prompt, systemInstruction, history);
+        if (response) return response;
+      } catch (error) {
+        console.warn('Groq fallo, intentando con Claude...', error);
+      }
     }
 
     // Fallback to Claude (smart, reliable)
-    try {
-      console.log('🔄 Usando Claude (respaldo)...');
-      const response = await callClaude(prompt, systemInstruction, history);
-      if (response) return response;
-    } catch (error) {
-      console.error('❌ Claude también falló:', error);
+    if (CLAUDE_API_KEY) {
+      try {
+        console.log('Usando Claude (respaldo)...');
+        const response = await callClaude(prompt, systemInstruction, history);
+        if (response) return response;
+      } catch (error) {
+        console.error('Claude tambien fallo:', error);
+      }
     }
 
-    return 'Lo siento, ambos servicios de IA están temporalmente no disponibles. Por favor intenta de nuevo en unos momentos.';
+    return 'Lo siento, ambos servicios de IA estan temporalmente no disponibles. Por favor intenta de nuevo en unos momentos.';
   }
 
   async generateImage(prompt: string): Promise<string | null> {
-    // Image generation not available with Groq/Claude
-    // Return null - the UI will handle this gracefully
-    console.warn('Generación de imágenes no disponible con Groq/Claude');
+    console.warn('Generacion de imagenes no disponible con Groq/Claude');
     return null;
   }
 }

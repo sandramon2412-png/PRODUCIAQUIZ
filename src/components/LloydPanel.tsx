@@ -112,6 +112,15 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
     const msgToSend = text || message;
     if (!msgToSend.trim() && !isScreenshot || isLoading) return;
 
+    if (!aiService.hasApiKeys()) {
+      setChat(prev => [...prev,
+        { role: 'user' as const, text: msgToSend },
+        { role: 'model' as const, text: 'Las API keys de IA no estan configuradas. El administrador debe agregar VITE_GROQ_API_KEY y/o VITE_CLAUDE_API_KEY en Vercel y redesplegar el proyecto.' }
+      ]);
+      setMessage("");
+      return;
+    }
+
     if (isScreenshot) {
       setIsFlashing(true);
       setTimeout(() => setIsFlashing(false), 300);
