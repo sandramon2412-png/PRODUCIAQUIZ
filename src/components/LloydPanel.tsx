@@ -5,7 +5,7 @@ import {
   Fingerprint, Video, Settings, Camera, Plus, CheckCircle2,
   Trash2, ChevronRight, Download, Monitor, ListTodo, Bot,
   Puzzle, Activity, Image, ShieldCheck, Box, Database,
-  Palette, Dumbbell, FileDown, Search
+  Palette, Dumbbell, FileDown, Search, Copy, Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -26,7 +26,7 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
   const [isListening, setIsListening] = useState(false);
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState<'chat' | 'bots' | 'notes' | 'todo'>('chat');
-  const [selectedModel, setSelectedModel] = useState("Gemini 3.1 Pro");
+  const [selectedModel, setSelectedModel] = useState("Groq + Claude");
   const [showModelSelector, setShowModelSelector] = useState(false);
   
   // Persistence
@@ -62,6 +62,13 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
   });
 
   const [isFlashing, setIsFlashing] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
+  const handleCopyMessage = (text: string, index: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
 
   useEffect(() => {
     localStorage.setItem('producia_chat', JSON.stringify(chat));
@@ -211,7 +218,7 @@ Responde siempre en español, sé directo y práctico. No uses relleno.`;
     { name: "Elite Trainer", icon: Dumbbell, category: "Sistemas", systemInstruction: "Eres un coach de alto rendimiento y productividad. Tu objetivo es ayudar al usuario a ejecutar sus tareas, mantener el foco y optimizar su energía diaria para lograr sus objetivos de negocio." },
   ];
 
-  const models = ["Gemini 3.1 Pro", "GPT-4o (Simulated)", "Claude 3.5 (Simulated)", "Llama 3 (Simulated)"];
+  const models = ["Groq + Claude", "Groq (Llama 3.3)", "Claude (Sonnet 4)"];
 
   return (
     <div className={cn(
@@ -334,17 +341,30 @@ Responde siempre en español, sé directo y práctico. No uses relleno.`;
             )}
 
             {chat.map((msg, i) => (
-              <div key={i} className={cn("flex", msg.role === 'user' ? "justify-end" : "justify-start")}>
+              <div key={i} className={cn("flex group", msg.role === 'user' ? "justify-end" : "justify-start")}>
                 <div className={cn(
-                  "max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm backdrop-blur-md",
-                  msg.role === 'user' 
-                    ? "bg-purple-600/60 text-white rounded-tr-none border border-white/10" 
+                  "max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm backdrop-blur-md relative",
+                  msg.role === 'user'
+                    ? "bg-purple-600/60 text-white rounded-tr-none border border-white/10"
                     : "bg-white/5 text-zinc-200 rounded-tl-none border border-white/10"
                 )}>
-                  {msg.text}
+                  <div className="whitespace-pre-wrap">{msg.text}</div>
+                  {/* Copy button */}
+                  <button
+                    onClick={() => handleCopyMessage(msg.text, i)}
+                    className={cn(
+                      "absolute -bottom-3 right-2 p-1.5 rounded-lg transition-all",
+                      copiedIndex === i
+                        ? "bg-emerald-500/20 text-emerald-400"
+                        : "bg-zinc-800/80 text-zinc-500 hover:text-white opacity-0 group-hover:opacity-100"
+                    )}
+                    title="Copiar texto"
+                  >
+                    {copiedIndex === i ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                  </button>
                   {msg.role === 'model' && (msg.text.toLowerCase().includes('quiz builder') || msg.text.toLowerCase().includes('crear un quiz')) && (
                     <div className="mt-4 pt-4 border-t border-white/10">
-                      <button 
+                      <button
                         onClick={() => window.location.href = '/bot/quizzes-funis'}
                         className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[10px] uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2"
                       >

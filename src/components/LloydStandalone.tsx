@@ -6,18 +6,12 @@ import { Monitor, X, Minus, Square } from 'lucide-react';
 export default function LloydStandalone() {
   const [isStandalone, setIsStandalone] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
-  const [apiKeyMissing, setApiKeyMissing] = useState(false);
+  const [apiKeyMissing] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
     document.title = "Lloyd Assistant";
     document.body.style.backgroundColor = "black";
-    
-    // Check API Key from multiple sources
-    const apiKey = (window as any).GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
-    if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey.length < 10) {
-      setApiKeyMissing(true);
-    }
     
     const checkStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                            (window.navigator as any).standalone ||
@@ -83,14 +77,8 @@ export default function LloydStandalone() {
               <span className="text-xs font-black uppercase tracking-widest">API Key no configurada</span>
             </div>
             <p className="text-[10px] text-white/60 text-center leading-relaxed">
-              Lloyd no podrá responder hasta que configures <code className="bg-black/40 px-1 rounded text-red-300">GEMINI_API_KEY</code> en el panel de <b>Secrets</b>.
+              Lloyd no puede conectarse al servicio de IA. Intenta recargar la página.
             </p>
-            <button 
-              onClick={() => window.open('https://ai.studio/build', '_blank')}
-              className="px-4 py-1.5 bg-red-500/20 hover:bg-red-500/40 text-red-300 text-[10px] font-bold rounded-full border border-red-500/30 transition-all"
-            >
-              CONFIGURAR EN SECRETS
-            </button>
           </motion.div>
         )}
         {showInstallPrompt && !isStandalone && (
