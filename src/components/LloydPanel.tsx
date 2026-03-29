@@ -49,6 +49,20 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
   });
   const [currentBot, setCurrentBot] = useState<string>("General Assistant");
 
+  const switchBot = (botName: string) => {
+    if (botName === currentBot) {
+      setActiveTab('chat');
+      return;
+    }
+    setCurrentBot(botName);
+    const botData = availableBots.find(b => b.name === botName);
+    const welcomeMessage = botName === "General Assistant"
+      ? "¡Hola! Soy Lloyd, tu copiloto de IA. ¿Qué vamos a construir hoy?"
+      : `🤖 **${botName}** activado. ${botData ? `Soy tu especialista en ${botData.category.toLowerCase()}.` : ''} ¿En qué te ayudo?`;
+    setChat([{ role: 'model', text: welcomeMessage }]);
+    setActiveTab('chat');
+  };
+
   const [isLoading, setIsLoading] = useState(false);
   const [chat, setChat] = useState<{ role: 'user' | 'model', text: string, isImage?: boolean }[]>(() => {
     try {
@@ -131,8 +145,7 @@ Si el usuario te pide crear un Quiz o funnel, sugiérele abrir el "Quiz Builder"
 5. Escalar con Facebook Ads
 
 IMPORTANTE: Si el usuario te pide crear un Quiz, dile: "Puedes abrir el Quiz Builder desde el Dashboard o el menú de Bots para diseñarlo con IA."
-Si te pide ayuda con un tema específico (copy, ads, productos), sugiérele activar el bot especializado en la pestaña 'Bots'.
-Responde siempre en español, sé directo y práctico. No uses relleno.`;
+Responde siempre en español, sé directo y práctico. No uses relleno. Ayuda directamente con lo que el usuario pida, no lo redirijas a otros bots.`;
       }
 
       const response = await aiService.generateCustomBotResponse(userMsg, systemPrompt, history);
@@ -319,6 +332,20 @@ Responde siempre en español, sé directo y práctico. No uses relleno.`;
       <div className="flex-1 overflow-y-auto p-5 scrollbar-hide relative z-10">
         {activeTab === 'chat' && (
           <div className="space-y-5">
+            {/* Active Bot Indicator */}
+            {currentBot !== "General Assistant" && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-purple-600/15 border border-purple-500/30 rounded-xl">
+                <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+                <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">{currentBot}</span>
+                <button
+                  onClick={() => switchBot("General Assistant")}
+                  className="ml-auto text-[9px] text-zinc-500 hover:text-white transition-colors"
+                >
+                  Volver a General
+                </button>
+              </div>
+            )}
+
             {/* Download Banner */}
             {!isStandalone && (
               <div className="bg-gradient-to-r from-purple-600/20 to-emerald-600/20 border border-white/10 rounded-2xl p-4 mb-4 backdrop-blur-md">
@@ -389,7 +416,7 @@ Responde siempre en español, sé directo y práctico. No uses relleno.`;
           <div className="space-y-4">
             {/* General Assistant */}
             <button
-              onClick={() => { setCurrentBot("General Assistant"); setActiveTab('chat'); }}
+              onClick={() => switchBot("General Assistant")}
               className={cn(
                 "w-full flex items-center justify-between p-4 rounded-2xl border transition-all",
                 currentBot === "General Assistant"
@@ -421,7 +448,7 @@ Responde siempre en español, sé directo y práctico. No uses relleno.`;
                   {availableBots.filter(b => b.category === category).map(bot => (
                     <button
                       key={bot.name}
-                      onClick={() => { setCurrentBot(bot.name); setActiveTab('chat'); }}
+                      onClick={() => switchBot(bot.name)}
                       className={cn(
                         "w-full flex items-center justify-between p-3 rounded-2xl border transition-all group",
                         currentBot === bot.name
