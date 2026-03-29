@@ -23,6 +23,7 @@ import { voiceService } from './services/voiceService';
 import { aiService } from './services/aiService';
 import { LloydPanel } from './components/LloydPanel';
 import LloydStandalone from './components/LloydStandalone';
+import LloydElectron from './components/LloydElectron';
 import { DownloadModal } from './components/DownloadModal';
 import {
   FileText, Megaphone, PenTool, Search, ScrollText,
@@ -122,6 +123,11 @@ const AppContent = () => {
       mq.removeEventListener('change', onchange);
     };
   }, []);
+
+  // In Electron, only show Lloyd Electron
+  if ((window as any).electronAPI?.isElectron) {
+    return <LloydElectron />;
+  }
 
   // In standalone PWA mode, only show Lloyd
   if (isStandalone) {

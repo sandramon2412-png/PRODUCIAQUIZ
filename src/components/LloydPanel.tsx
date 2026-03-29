@@ -111,35 +111,40 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
   const captureScreen = async () => {
     if (isLoading) return;
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { displaySurface: 'screen' } as any,
-      });
+      let base64: string | null = null;
 
-      const video = document.createElement('video');
-      video.srcObject = stream;
-      await video.play();
+      // Use Electron native capture if available (no permission dialog)
+      if ((window as any).electronAPI?.captureScreenshot) {
+        base64 = await (window as any).electronAPI.captureScreenshot();
+      } else {
+        // Fallback: browser getDisplayMedia (asks permission)
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: { displaySurface: 'screen' } as any,
+        });
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        await video.play();
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(video, 0, 0);
+        stream.getTracks().forEach(track => track.stop());
+        base64 = canvas.toDataURL('image/png').split(',')[1];
+      }
 
-      // Wait a frame for video to render
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(video, 0, 0);
-
-      // Stop the stream
-      stream.getTracks().forEach(track => track.stop());
+      if (!base64) {
+        setChat(prev => [...prev, { role: 'model' as const, text: 'No se pudo capturar la pantalla.' }]);
+        return;
+      }
 
       // Flash effect
       setIsFlashing(true);
       setTimeout(() => setIsFlashing(false), 300);
 
-      // Convert to base64
-      const base64 = canvas.toDataURL('image/png').split(',')[1];
-
       // Add user message
-      setChat(prev => [...prev, { role: 'user' as const, text: '📸 Captura de pantalla tomada. Analizando...' }]);
+      setChat(prev => [...prev, { role: 'user' as const, text: 'Captura de pantalla tomada. Analizando...' }]);
       setIsLoading(true);
 
       // Send to Claude Vision

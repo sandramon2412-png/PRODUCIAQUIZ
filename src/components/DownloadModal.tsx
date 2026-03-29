@@ -12,6 +12,11 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose })
   const [installed, setInstalled] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
 
+  // Detect OS
+  const platform = navigator.platform.toLowerCase();
+  const isMac = platform.includes('mac');
+  const isWindows = platform.includes('win');
+
   React.useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
@@ -20,7 +25,6 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose })
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // Check if already installed
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
                          (window.navigator as any).standalone;
     if (isStandalone) setInstalled(true);
@@ -46,9 +50,8 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose })
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleOpenNewTab = () => {
-    window.open(window.location.origin + '/lloyd', '_blank');
-  };
+  // GitHub releases URL - update this when you upload the builds
+  const RELEASES_URL = 'https://github.com/sandramon2412-png/PRODUCIAQUIZ/releases/latest';
 
   return (
     <AnimatePresence>
@@ -78,85 +81,79 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose })
                 </button>
               </div>
 
-              <h3 className="text-2xl font-black text-white mb-2">Instalar Lloyd</h3>
-              <p className="text-zinc-400 text-sm mb-8 leading-relaxed">
-                Instala Lloyd como app independiente en tu dispositivo. Se abre en su propia ventana, sin barra del navegador.
+              <h3 className="text-2xl font-black text-white mb-2">Descargar Lloyd</h3>
+              <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
+                App de escritorio con ventana transparente, captura de pantalla y siempre visible.
               </p>
 
-              {installed ? (
-                /* Already installed */
-                <div className="text-center py-4">
-                  <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-                  </div>
-                  <h4 className="text-lg font-black text-white mb-2">Lloyd ya esta instalado</h4>
-                  <p className="text-zinc-500 text-sm mb-6">Busca "Lloyd Assistant" en tus aplicaciones.</p>
-                  <button
-                    onClick={onClose}
-                    className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-bold text-sm transition-all"
+              {/* Desktop App Downloads */}
+              <div className="space-y-3 mb-6">
+                <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">App de Escritorio (Recomendado)</h4>
+
+                <a
+                  href={RELEASES_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-3 shadow-lg shadow-purple-600/20"
+                >
+                  <Download className="w-5 h-5" />
+                  {isWindows ? 'Descargar para Windows' : isMac ? 'Descargar para Mac' : 'Descargar'}
+                </a>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <a
+                    href={RELEASES_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-bold text-[10px] transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
                   >
-                    CERRAR
-                  </button>
+                    Windows (.exe)
+                  </a>
+                  <a
+                    href={RELEASES_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-bold text-[10px] transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                  >
+                    Mac (.dmg)
+                  </a>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="flex-1 h-px bg-white/10" />
+                <span className="text-[9px] text-zinc-600 font-black uppercase tracking-widest">O usa la version web</span>
+                <div className="flex-1 h-px bg-white/10" />
+              </div>
+
+              {/* PWA Install */}
+              {installed ? (
+                <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                  <span className="text-sm text-emerald-400 font-bold">Version web ya instalada</span>
                 </div>
               ) : deferredPrompt ? (
-                /* Browser supports install */
-                <div className="space-y-4">
-                  <button
-                    onClick={handleInstall}
-                    className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-3 shadow-lg shadow-purple-600/20"
-                  >
-                    <Download className="w-5 h-5" />
-                    INSTALAR COMO APP
-                  </button>
-                  <p className="text-center text-[10px] text-zinc-600">
-                    Se instala en segundos. Sin descargas pesadas.
-                  </p>
-                </div>
+                <button
+                  onClick={handleInstall}
+                  className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Instalar version web (PWA)
+                </button>
               ) : (
-                /* Browser doesn't support beforeinstallprompt - show manual instructions */
-                <div className="space-y-6">
-                  <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3">
-                    <h4 className="text-xs font-black text-white uppercase tracking-widest mb-3">
-                      Pasos para instalar
-                    </h4>
-                    <div className="flex gap-3 items-start">
-                      <div className="w-6 h-6 rounded-full bg-purple-600 text-white text-[10px] font-black flex items-center justify-center shrink-0">1</div>
-                      <p className="text-sm text-zinc-300">
-                        Abre Lloyd en <b>Chrome</b> o <b>Edge</b> en una pestaña nueva
-                      </p>
-                    </div>
-                    <div className="flex gap-3 items-start">
-                      <div className="w-6 h-6 rounded-full bg-purple-600 text-white text-[10px] font-black flex items-center justify-center shrink-0">2</div>
-                      <p className="text-sm text-zinc-300">
-                        Haz clic en los <b>3 puntos</b> del navegador (arriba a la derecha)
-                      </p>
-                    </div>
-                    <div className="flex gap-3 items-start">
-                      <div className="w-6 h-6 rounded-full bg-purple-600 text-white text-[10px] font-black flex items-center justify-center shrink-0">3</div>
-                      <p className="text-sm text-zinc-300">
-                        Selecciona <b>"Instalar Lloyd Assistant"</b> o <b>"Guardar y compartir" &gt; "Instalar"</b>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={handleOpenNewTab}
-                      className="py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-[11px] transition-all flex items-center justify-center gap-2"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      ABRIR LLOYD
-                    </button>
-                    <button
-                      onClick={handleCopyLink}
-                      className="py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-bold text-[11px] transition-all flex items-center justify-center gap-2"
-                    >
-                      {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                      {copied ? "COPIADO" : "COPIAR LINK"}
-                    </button>
-                  </div>
-                </div>
+                <button
+                  onClick={handleCopyLink}
+                  className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2"
+                >
+                  {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                  {copied ? "Link copiado" : "Copiar link de Lloyd"}
+                </button>
               )}
+
+              <p className="text-[9px] text-zinc-700 text-center mt-4">
+                Atajo: Ctrl+Shift+L para mostrar/ocultar Lloyd
+              </p>
             </div>
           </motion.div>
         </div>
