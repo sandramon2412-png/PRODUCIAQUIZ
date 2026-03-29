@@ -605,17 +605,8 @@ Responde siempre en español, sé directo y práctico. No uses relleno. Ayuda di
                 }
               }}
               placeholder={activeTab === 'todo' ? "Nueva tarea..." : "Pregunta a Lloyd..."}
-              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-purple-500/50 transition-all placeholder:text-zinc-600"
+              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-4 pr-4 text-sm text-white focus:outline-none focus:border-purple-500/50 transition-all placeholder:text-zinc-600"
             />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              <button 
-                onClick={() => handleSend(undefined, true)}
-                title="Analizar pantalla"
-                className="p-2 text-zinc-500 hover:text-white transition-colors"
-              >
-                <Camera className="w-4 h-4" />
-              </button>
-            </div>
           </div>
           
           <div className="flex items-center gap-2">

@@ -23,8 +23,8 @@ export default defineConfig(({mode}) => {
           scope: "/",
           display: "standalone",
           display_override: ["standalone", "minimal-ui"],
-          theme_color: "#050505",
-          background_color: "#050505",
+          theme_color: "#0a0a0a",
+          background_color: "#0a0a0a",
           orientation: "any",
           categories: ["productivity", "utilities"],
           icons: [
