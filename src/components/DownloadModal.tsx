@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Download, CheckCircle2, Monitor, Copy, ExternalLink } from 'lucide-react';
+import { X, Download, CheckCircle2, Monitor, Copy, ExternalLink, Clock } from 'lucide-react';
 
 interface DownloadModalProps {
   isOpen: boolean;
@@ -11,11 +11,6 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose })
   const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
   const [installed, setInstalled] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
-
-  // Detect OS
-  const platform = navigator.platform.toLowerCase();
-  const isMac = platform.includes('mac');
-  const isWindows = platform.includes('win');
 
   React.useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -50,9 +45,6 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose })
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // GitHub releases URL - update this when you upload the builds
-  const RELEASES_URL = 'https://github.com/sandramon2412-png/PRODUCIAQUIZ/releases/latest';
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -83,77 +75,66 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose })
 
               <h3 className="text-2xl font-black text-white mb-2">Descargar Lloyd</h3>
               <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
-                App de escritorio con ventana transparente, captura de pantalla y siempre visible.
+                Tu asistente de inteligencia artificial siempre disponible.
               </p>
 
-              {/* Desktop App Downloads */}
+              {/* PWA Install - Primary option */}
               <div className="space-y-3 mb-6">
-                <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">App de Escritorio (Recomendado)</h4>
+                <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Instalar ahora</h4>
 
-                <a
-                  href={RELEASES_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-3 shadow-lg shadow-purple-600/20"
-                >
-                  <Download className="w-5 h-5" />
-                  {isWindows ? 'Descargar para Windows' : isMac ? 'Descargar para Mac' : 'Descargar'}
-                </a>
+                {installed ? (
+                  <div className="flex items-center gap-3 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    <span className="text-sm text-emerald-400 font-bold">Lloyd ya esta instalado</span>
+                  </div>
+                ) : deferredPrompt ? (
+                  <button
+                    onClick={handleInstall}
+                    className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-3 shadow-lg shadow-purple-600/20"
+                  >
+                    <Download className="w-5 h-5" />
+                    Instalar Lloyd (Web App)
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleCopyLink}
+                    className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-3 shadow-lg shadow-purple-600/20"
+                  >
+                    {copied ? <CheckCircle2 className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                    {copied ? "Link copiado!" : "Copiar link de Lloyd"}
+                  </button>
+                )}
 
-                <div className="grid grid-cols-2 gap-2">
-                  <a
-                    href={RELEASES_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-bold text-[10px] transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
-                  >
-                    Windows (.exe)
-                  </a>
-                  <a
-                    href={RELEASES_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-bold text-[10px] transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
-                  >
-                    Mac (.dmg)
-                  </a>
-                </div>
+                {!installed && !deferredPrompt && (
+                  <p className="text-[10px] text-zinc-600 text-center">
+                    Abre el link en Chrome y usa "Instalar app" del menu del navegador
+                  </p>
+                )}
               </div>
 
               {/* Divider */}
               <div className="flex items-center gap-3 mb-6">
                 <div className="flex-1 h-px bg-white/10" />
-                <span className="text-[9px] text-zinc-600 font-black uppercase tracking-widest">O usa la version web</span>
+                <span className="text-[9px] text-zinc-600 font-black uppercase tracking-widest">Proximamente</span>
                 <div className="flex-1 h-px bg-white/10" />
               </div>
 
-              {/* PWA Install */}
-              {installed ? (
-                <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-                  <span className="text-sm text-emerald-400 font-bold">Version web ya instalada</span>
+              {/* Desktop App - Coming Soon */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="py-3 bg-zinc-800/50 border border-white/5 text-zinc-600 rounded-xl font-bold text-[10px] flex items-center justify-center gap-2 uppercase tracking-widest cursor-not-allowed">
+                    <Clock className="w-3 h-3" />
+                    Windows (.exe)
+                  </div>
+                  <div className="py-3 bg-zinc-800/50 border border-white/5 text-zinc-600 rounded-xl font-bold text-[10px] flex items-center justify-center gap-2 uppercase tracking-widest cursor-not-allowed">
+                    <Clock className="w-3 h-3" />
+                    Mac (.dmg)
+                  </div>
                 </div>
-              ) : deferredPrompt ? (
-                <button
-                  onClick={handleInstall}
-                  className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Instalar version web (PWA)
-                </button>
-              ) : (
-                <button
-                  onClick={handleCopyLink}
-                  className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2"
-                >
-                  {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                  {copied ? "Link copiado" : "Copiar link de Lloyd"}
-                </button>
-              )}
-
-              <p className="text-[9px] text-zinc-700 text-center mt-4">
-                Atajo: Ctrl+Shift+L para mostrar/ocultar Lloyd
-              </p>
+                <p className="text-[10px] text-zinc-700 text-center">
+                  App de escritorio con ventana transparente y captura nativa
+                </p>
+              </div>
             </div>
           </motion.div>
         </div>
