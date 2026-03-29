@@ -147,7 +147,7 @@ Responde siempre en español, sé directo y práctico. No uses relleno.`;
       
       let errorDisplay = "Error de conexión. Reintentando...";
       if (errorMessage.includes("API_KEY") || errorMessage.includes("403") || errorMessage.includes("401") || errorMessage.includes("not found")) {
-        errorDisplay = "Error: Configuración de API incompleta o inválida. Por favor, revisa el panel de 'Secrets' en AI Studio y asegúrate de que GEMINI_API_KEY esté configurada.";
+        errorDisplay = "Error: Servicio de IA temporalmente no disponible. Intenta de nuevo en unos momentos.";
       } else if (errorMessage.includes("quota")) {
         errorDisplay = "Error: Cuota de API excedida. Por favor, intenta más tarde.";
       } else {
