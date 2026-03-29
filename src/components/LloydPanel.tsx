@@ -47,7 +47,10 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
       return ["Sales Letter Weapon"];
     }
   });
-  const [currentBot, setCurrentBot] = useState<string>("General Assistant");
+  const [currentBot, setCurrentBot] = useState<string>(() => {
+    return localStorage.getItem('producia_current_bot') || "General Assistant";
+  });
+  const [newTodoText, setNewTodoText] = useState("");
 
   const switchBot = (botName: string) => {
     if (botName === currentBot) {
@@ -55,10 +58,11 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
       return;
     }
     setCurrentBot(botName);
+    localStorage.setItem('producia_current_bot', botName);
     const botData = availableBots.find(b => b.name === botName);
     const welcomeMessage = botName === "General Assistant"
       ? "¡Hola! Soy Lloyd, tu copiloto de IA. ¿Qué vamos a construir hoy?"
-      : `🤖 **${botName}** activado. ${botData ? `Soy tu especialista en ${botData.category.toLowerCase()}.` : ''} ¿En qué te ayudo?`;
+      : `${botName} activado. ${botData ? `Soy tu especialista en ${botData.category.toLowerCase()}.` : ''} ¿En qué te ayudo?`;
     setChat([{ role: 'model', text: welcomeMessage }]);
     setActiveTab('chat');
   };
@@ -475,43 +479,105 @@ Responde siempre en español, sé directo y práctico. No uses relleno. Ayuda di
           <div className="h-full flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Bloc de Notas</h3>
-              <button className="p-1.5 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"><Plus className="w-4 h-4 text-white" /></button>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] text-zinc-600">{notes.length > 0 ? `${notes.length} caracteres` : ''}</span>
+                {notes.length > 0 && (
+                  <button
+                    onClick={() => { if (confirm('¿Borrar todas las notas?')) setNotes(''); }}
+                    className="p-1.5 bg-red-500/10 rounded-lg hover:bg-red-500/20 transition-colors"
+                    title="Borrar notas"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                  </button>
+                )}
+                <button
+                  onClick={() => { if (notes.trim()) { navigator.clipboard.writeText(notes); } }}
+                  className="p-1.5 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
+                  title="Copiar notas"
+                >
+                  <Copy className="w-3.5 h-3.5 text-white" />
+                </button>
+              </div>
             </div>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Escribe tus ideas aquí... Se guardan automáticamente."
-              className="flex-1 w-full bg-transparent text-zinc-300 text-sm resize-none focus:outline-none placeholder:text-zinc-700 leading-relaxed"
+              className="flex-1 w-full bg-white/5 border border-white/10 rounded-xl p-4 text-zinc-300 text-sm resize-none focus:outline-none focus:border-purple-500/30 placeholder:text-zinc-700 leading-relaxed transition-colors"
             />
+            <p className="text-[9px] text-zinc-700 mt-2 text-center">Guardado automático en tu navegador</p>
           </div>
         )}
 
         {activeTab === 'todo' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-2">
               <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Lista de Tareas</h3>
+              {todos.length > 0 && (
+                <span className="text-[9px] text-zinc-600">
+                  {todos.filter(t => t.completed).length}/{todos.length} completadas
+                </span>
+              )}
             </div>
+
+            {/* Dedicated add task input */}
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newTodoText}
+                onChange={(e) => setNewTodoText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newTodoText.trim()) {
+                    setTodos([...todos, { id: Date.now().toString(), text: newTodoText.trim(), completed: false }]);
+                    setNewTodoText("");
+                  }
+                }}
+                placeholder="Escribe una nueva tarea..."
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl py-2.5 px-4 text-sm text-white focus:outline-none focus:border-purple-500/30 placeholder:text-zinc-600 transition-colors"
+              />
+              <button
+                onClick={() => {
+                  if (newTodoText.trim()) {
+                    setTodos([...todos, { id: Date.now().toString(), text: newTodoText.trim(), completed: false }]);
+                    setNewTodoText("");
+                  }
+                }}
+                className="w-10 h-10 bg-purple-600 hover:bg-purple-500 text-white rounded-xl flex items-center justify-center transition-all shrink-0"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+
             <div className="space-y-2">
               {todos.map(todo => (
                 <div key={todo.id} className="flex items-center gap-3 p-3 bg-white/5 border border-white/5 rounded-xl group">
-                  <button onClick={() => toggleTodo(todo.id)} className={cn("transition-colors", todo.completed ? "text-emerald-500" : "text-zinc-600 hover:text-zinc-400")}>
+                  <button onClick={() => toggleTodo(todo.id)} className={cn("transition-colors shrink-0", todo.completed ? "text-emerald-500" : "text-zinc-600 hover:text-zinc-400")}>
                     <CheckCircle2 className="w-5 h-5" />
                   </button>
                   <span className={cn("flex-1 text-sm transition-all", todo.completed ? "text-zinc-600 line-through" : "text-zinc-300")}>
                     {todo.text}
                   </span>
-                  <button onClick={() => deleteTodo(todo.id)} className="opacity-0 group-hover:opacity-100 p-1 text-zinc-600 hover:text-red-400 transition-all">
+                  <button onClick={() => deleteTodo(todo.id)} className="opacity-0 group-hover:opacity-100 p-1 text-zinc-600 hover:text-red-400 transition-all shrink-0">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               ))}
               {todos.length === 0 && (
-                <div className="text-center py-10">
-                  <ListTodo className="w-12 h-12 text-zinc-800 mx-auto mb-3" />
+                <div className="text-center py-8">
+                  <ListTodo className="w-10 h-10 text-zinc-800 mx-auto mb-3" />
                   <p className="text-zinc-600 text-xs">No tienes tareas pendientes.</p>
+                  <p className="text-zinc-700 text-[10px] mt-1">Escribe arriba y presiona Enter o +</p>
                 </div>
               )}
             </div>
+            {todos.filter(t => t.completed).length > 0 && (
+              <button
+                onClick={() => setTodos(todos.filter(t => !t.completed))}
+                className="w-full py-2 text-[10px] text-red-400/60 hover:text-red-400 transition-colors uppercase tracking-widest font-bold"
+              >
+                Limpiar completadas
+              </button>
+            )}
           </div>
         )}
       </div>
