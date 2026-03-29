@@ -1,29 +1,82 @@
-import { GoogleGenAI } from "@google/genai";
+import Groq from 'groq-sdk';
 
-const MODEL_NAME = "gemini-3-flash-preview";
+const GROQ_API_KEY = (import.meta as any).env?.VITE_GROQ_API_KEY || '';
+const CLAUDE_API_KEY = (import.meta as any).env?.VITE_CLAUDE_API_KEY || '';
 
-export class AIService {
-  private ai: GoogleGenAI;
+const groq = new Groq({ apiKey: GROQ_API_KEY, dangerouslyAllowBrowser: true });
 
-  constructor() {
-    // Try multiple sources for the API key
-    const apiKey = 
-      process.env.GEMINI_API_KEY || 
-      (import.meta as any).env?.VITE_GEMINI_API_KEY ||
-      (window as any).GEMINI_API_KEY;
+// Groq model (fast, free)
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
+// Claude model (smart, fallback)
+const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
 
-    if (!apiKey) {
-      console.error("❌ Lloyd Error: GEMINI_API_KEY no encontrada. Configúrala en el panel de Secrets de AI Studio.");
-    } else if (apiKey === "MY_GEMINI_API_KEY" || apiKey.length < 10) {
-      console.warn("⚠️ Lloyd Warning: GEMINI_API_KEY parece ser un marcador de posición o es demasiado corta.");
-    } else {
-      console.log("✅ Lloyd: API Key detectada correctamente.");
-    }
-    
-    this.ai = new GoogleGenAI({ apiKey: apiKey || "" });
+interface Message {
+  role: 'user' | 'model';
+  parts: { text: string }[];
+}
+
+async function callGroq(prompt: string, systemInstruction: string, history: Message[] = []): Promise<string> {
+  const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
+    { role: 'system', content: systemInstruction },
+  ];
+
+  for (const msg of history) {
+    messages.push({
+      role: msg.role === 'user' ? 'user' : 'assistant',
+      content: msg.parts[0].text,
+    });
   }
 
-  async generateModelAnalysis(productDescription: string, history: { role: 'user' | 'model', parts: { text: string }[] }[] = []) {
+  messages.push({ role: 'user', content: prompt });
+
+  const response = await groq.chat.completions.create({
+    model: GROQ_MODEL,
+    messages,
+    temperature: 0.7,
+    max_tokens: 4096,
+  });
+
+  return response.choices[0]?.message?.content || '';
+}
+
+async function callClaude(prompt: string, systemInstruction: string, history: Message[] = []): Promise<string> {
+  const messages: { role: 'user' | 'assistant'; content: string }[] = [];
+
+  for (const msg of history) {
+    messages.push({
+      role: msg.role === 'user' ? 'user' : 'assistant',
+      content: msg.parts[0].text,
+    });
+  }
+
+  messages.push({ role: 'user', content: prompt });
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': CLAUDE_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 4096,
+      system: systemInstruction,
+      messages,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Claude API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.content?.[0]?.text || '';
+}
+
+export class AIService {
+  async generateModelAnalysis(productDescription: string, history: Message[] = []) {
     const systemInstruction = `Eres el Bot Modelador de PRODUCIA, especializado en ayudar a vendedores de productos digitales hispanos a modelar productos ganadores.
 
 Tu flujo de trabajo es:
@@ -45,59 +98,35 @@ REGLAS DE RESPUESTA:
 
 IMPORTANTE: No puedes navegar por URLs directamente. Si el usuario te da un link, pídele que te pegue el texto de la página o la descripción del anuncio.`;
 
-    const response = await this.ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: [
-        ...history,
-        { role: 'user', parts: [{ text: productDescription }] }
-      ],
-      config: {
-        systemInstruction,
-        temperature: 0.7,
-      }
-    });
-
-    return response.text;
+    return this.generateCustomBotResponse(productDescription, systemInstruction, history);
   }
 
-  async generateCustomBotResponse(prompt: string, systemInstruction: string, history: { role: 'user' | 'model', parts: { text: string }[] }[] = []) {
-    const response = await this.ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: [
-        ...history,
-        { role: 'user', parts: [{ text: prompt }] }
-      ],
-      config: {
-        systemInstruction,
-        temperature: 0.7,
-      }
-    });
-
-    return response.text;
-  }
-
-  async generateImage(prompt: string) {
-    const response = await this.ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: {
-        parts: [
-          {
-            text: `Genera una imagen publicitaria de alta conversión para Meta Ads basada en este concepto: ${prompt}. Estilo profesional, limpio, orientado a ventas DTC (Direct-to-Consumer).`,
-          },
-        ],
-      },
-      config: {
-        imageConfig: {
-          aspectRatio: "1:1",
-        },
-      },
-    });
-
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        return `data:image/png;base64,${part.inlineData.data}`;
-      }
+  async generateCustomBotResponse(prompt: string, systemInstruction: string, history: Message[] = []): Promise<string> {
+    // Try Groq first (fast, free)
+    try {
+      console.log('🚀 Usando Groq (principal)...');
+      const response = await callGroq(prompt, systemInstruction, history);
+      if (response) return response;
+    } catch (error) {
+      console.warn('⚠️ Groq falló, intentando con Claude...', error);
     }
+
+    // Fallback to Claude (smart, reliable)
+    try {
+      console.log('🔄 Usando Claude (respaldo)...');
+      const response = await callClaude(prompt, systemInstruction, history);
+      if (response) return response;
+    } catch (error) {
+      console.error('❌ Claude también falló:', error);
+    }
+
+    return 'Lo siento, ambos servicios de IA están temporalmente no disponibles. Por favor intenta de nuevo en unos momentos.';
+  }
+
+  async generateImage(prompt: string): Promise<string | null> {
+    // Image generation not available with Groq/Claude
+    // Return null - the UI will handle this gracefully
+    console.warn('Generación de imágenes no disponible con Groq/Claude');
     return null;
   }
 }

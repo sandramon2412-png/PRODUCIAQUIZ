@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { GoogleGenAI } from "@google/genai";
+import { aiService } from '../services/aiService';
 import { supabase } from '../supabase';
 import type { User } from '@supabase/supabase-js';
 
@@ -246,39 +246,25 @@ export default function QuizBuilder() {
   const generateWithAI = async () => {
     setIsGenerating(true);
     try {
-      const apiKey = 
-        process.env.GEMINI_API_KEY || 
-        (import.meta as any).env?.VITE_GEMINI_API_KEY ||
-        (window as any).GEMINI_API_KEY;
+      const prompt = `Genera un quiz de alta conversión para un funnel de ventas sobre "${quiz.title}".
+      Devuelve SOLO un objeto JSON válido (sin markdown, sin \`\`\`) con esta estructura exacta:
+      {"title": "...", "description": "...", "questions": [{"id": "1", "text": "...", "type": "multiple-choice", "options": [{"id": "o1", "text": "...", "value": 1}]}], "results": [{"id": "r1", "title": "...", "desc": "...", "minScore": 0, "maxScore": 5}]}
+      Genera mínimo 4 preguntas con 4 opciones cada una y 3 resultados. Usa un tono persuasivo y profesional en español.`;
 
-      if (!apiKey) {
-        throw new Error("API Key not found");
-      }
+      const systemInstruction = 'Eres un experto en quiz funnels de alta conversión. Solo responde con JSON válido, sin explicaciones ni markdown.';
 
-      const ai = new GoogleGenAI({ apiKey });
-      
-      const prompt = `Genera un quiz de alta conversión para un funnel de ventas sobre ${quiz.title}. 
-      Devuelve un objeto JSON con title, description, questions (id, text, type, options[id, text, value]) y results (id, title, desc, minScore, maxScore).
-      Usa un tono persuasivo y profesional.`;
+      const response = await aiService.generateCustomBotResponse(prompt, systemInstruction);
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json"
-        }
-      });
-
-      let text = response.text;
+      let text = response;
       // Clean markdown if present
       if (text.includes('```json')) {
         text = text.split('```json')[1].split('```')[0];
       } else if (text.includes('```')) {
         text = text.split('```')[1].split('```')[0];
       }
-      
+
       const aiQuiz = JSON.parse(text.trim());
-      
+
       setQuiz(prev => ({
         ...prev,
         ...aiQuiz,
