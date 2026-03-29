@@ -38,7 +38,7 @@
           "arch": ["x64"]
         }
       ],
-      "icon": null
+      "icon": "public/icon-512.png"
     },
     "mac": {
       "target": [
@@ -47,6 +47,7 @@
           "arch": ["x64", "arm64"]
         }
       ],
+      "icon": "public/icon-512.png",
       "category": "public.app-category.productivity"
     },
     "nsis": {
