@@ -1,8 +1,7 @@
-const { app, BrowserWindow, ipcMain, desktopCapturer, screen, globalShortcut, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, desktopCapturer, screen, globalShortcut, nativeImage } = require('electron');
 const path = require('path');
 
 let mainWindow = null;
-let tray = null;
 let isCompact = false;
 
 const EXPANDED_WIDTH = 420;
@@ -22,8 +21,8 @@ function createWindow() {
     transparent: true,
     resizable: false,
     skipTaskbar: false,
-    alwaysOnTop: true,
-    hasShadow: true,
+    alwaysOnTop: false,
+    hasShadow: false,
     backgroundColor: '#00000000',
     webPreferences: {
       nodeIntegration: false,
@@ -32,18 +31,12 @@ function createWindow() {
     },
   });
 
+  // Let clicks pass through transparent areas
+  mainWindow.setIgnoreMouseEvents(false);
+
   // Load the app
   const startUrl = process.env.ELECTRON_START_URL || `file://${path.join(__dirname, './dist/index.html')}`;
   mainWindow.loadURL(startUrl);
-
-  // Navigate to /lloyd route once loaded
-  mainWindow.webContents.on('did-finish-load', () => {
-    mainWindow.webContents.executeJavaScript(`
-      if (!window.location.hash.includes('lloyd') && !window.location.pathname.includes('lloyd')) {
-        window.location.hash = '/lloyd';
-      }
-    `);
-  });
 
   // Open external links in default browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -65,12 +58,10 @@ ipcMain.handle('toggle-compact', () => {
   const [x, y] = mainWindow.getPosition();
 
   if (isCompact) {
-    // Expand
     mainWindow.setSize(EXPANDED_WIDTH, EXPANDED_HEIGHT);
     mainWindow.setPosition(x, y - (EXPANDED_HEIGHT - COMPACT_HEIGHT));
     isCompact = false;
   } else {
-    // Compact
     mainWindow.setSize(COMPACT_WIDTH, COMPACT_HEIGHT);
     mainWindow.setPosition(x, y + (EXPANDED_HEIGHT - COMPACT_HEIGHT));
     isCompact = true;
@@ -85,31 +76,37 @@ ipcMain.handle('get-compact-state', () => isCompact);
 // Capture screenshot
 ipcMain.handle('capture-screenshot', async () => {
   try {
+    // Hide window before capture so it doesn't appear in screenshot
+    if (mainWindow) mainWindow.hide();
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     const sources = await desktopCapturer.getSources({
       types: ['screen'],
       thumbnailSize: { width: 1920, height: 1080 },
     });
 
+    // Show window again
+    if (mainWindow) mainWindow.show();
+
     if (sources.length === 0) return null;
 
     const screenshot = sources[0].thumbnail;
-    return screenshot.toDataURL().split(',')[1]; // Return base64
+    return screenshot.toDataURL().split(',')[1];
   } catch (error) {
     console.error('Screenshot capture failed:', error);
+    if (mainWindow) mainWindow.show();
     return null;
   }
 });
 
-// Minimize to tray
+// Minimize
 ipcMain.handle('minimize-to-tray', () => {
-  if (mainWindow) {
-    mainWindow.hide();
-  }
+  if (mainWindow) mainWindow.hide();
 });
 
 // Toggle always on top
 ipcMain.handle('toggle-always-on-top', () => {
-  if (!mainWindow) return;
+  if (!mainWindow) return false;
   const current = mainWindow.isAlwaysOnTop();
   mainWindow.setAlwaysOnTop(!current);
   return !current;
