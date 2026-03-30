@@ -71,6 +71,9 @@ export default defineConfig(({mode}) => {
       })
     ],
     base: './',
+    build: {
+      target: 'esnext',
+    },
     define: {},
     resolve: {
       alias: {
