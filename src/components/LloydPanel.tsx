@@ -28,6 +28,7 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
   const [activeTab, setActiveTab] = useState<'chat' | 'bots' | 'notes' | 'todo'>('chat');
   const [selectedModel, setSelectedModel] = useState("Groq + Claude");
   const [showModelSelector, setShowModelSelector] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
   
   // Persistence
   const [notes, setNotes] = useState<string>(() => localStorage.getItem('producia_notes') || "");
@@ -51,6 +52,11 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
     return localStorage.getItem('producia_current_bot') || "General Assistant";
   });
   const [newTodoText, setNewTodoText] = useState("");
+
+  // Auto-scroll chat to bottom when new messages arrive
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chat, isLoading]);
 
   const switchBot = (botName: string) => {
     if (botName === currentBot) {
@@ -484,6 +490,7 @@ REGLAS IMPORTANTES:
                 </div>
               </div>
             )}
+            <div ref={chatEndRef} />
           </div>
         )}
 
