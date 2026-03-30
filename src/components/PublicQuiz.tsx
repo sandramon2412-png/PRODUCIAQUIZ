@@ -226,11 +226,21 @@ export default function PublicQuiz() {
   const handleStart = () => setCurrentStep('questions');
 
   const handleAnswer = (questionId: string, value: number) => {
-    setAnswers(prev => ({ ...prev, [questionId]: value }));
+    const newAnswers = { ...answers, [questionId]: value };
+    setAnswers(newAnswers);
     if (currentQuestionIndex < quiz.questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
-      setCurrentStep('lead');
+      // Si leadConfig está desactivado, saltar directo al resultado
+      const leadEnabled = (quiz.leadConfig as any)?.enabled !== false;
+      if (leadEnabled && quiz.leadConfig?.fields?.length > 0) {
+        setCurrentStep('lead');
+      } else {
+        // Calcular score y ir directo al resultado
+        const totalScore = Object.values(newAnswers).reduce((acc: number, val: number) => acc + val, 0);
+        setScore(totalScore);
+        setCurrentStep('result');
+      }
     }
   };
 
@@ -493,7 +503,7 @@ export default function PublicQuiz() {
                 </div>
                 <div className="p-6 bg-zinc-900/30 border border-zinc-800 rounded-3xl">
                   <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">Nivel</p>
-                  <p className="text-2xl font-black text-emerald-400">Avanzado</p>
+                  <p className="text-2xl font-black text-emerald-400">{getResult().title}</p>
                 </div>
               </div>
             </motion.div>

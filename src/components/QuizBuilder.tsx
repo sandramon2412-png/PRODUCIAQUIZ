@@ -66,6 +66,7 @@ interface Quiz {
   questions: Question[];
   results: Result[];
   leadConfig: {
+    enabled: boolean;
     title: string;
     subtitle: string;
     buttonText: string;
@@ -103,9 +104,24 @@ export default function QuizBuilder() {
         desc: 'Estás en las etapas iniciales. Necesitas enfocarte en validación y tráfico orgánico.',
         minScore: 0,
         maxScore: 5
+      },
+      {
+        id: 'r2',
+        title: 'Nivel Intermedio',
+        desc: 'Tienes una buena base. Es momento de escalar tu estrategia y automatizar procesos.',
+        minScore: 6,
+        maxScore: 12
+      },
+      {
+        id: 'r3',
+        title: 'Nivel Avanzado',
+        desc: '¡Excelente! Estás en un nivel alto. Enfócate en optimizar conversiones y escalar.',
+        minScore: 13,
+        maxScore: 20
       }
     ],
     leadConfig: {
+      enabled: true,
       title: '¡Tu Resultado está Listo!',
       subtitle: 'Ingresa tus datos para recibir tu análisis personalizado y una oferta exclusiva.',
       buttonText: 'Ver mi Resultado',
@@ -517,6 +533,25 @@ Usa un tono persuasivo y profesional en español.`;
                     <h2 className="text-2xl font-black text-white tracking-tight uppercase tracking-widest">Captura de Leads</h2>
                   </div>
 
+                  <div className="bg-zinc-900/30 border border-zinc-800 rounded-[32px] p-8 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-bold text-white mb-1">Activar Captura de Leads</h3>
+                        <p className="text-xs text-zinc-500">Pide nombre y email antes de mostrar el resultado. Si está desactivado, el resultado se muestra directo.</p>
+                      </div>
+                      <button
+                        onClick={() => setQuiz(prev => ({
+                          ...prev,
+                          leadConfig: { ...prev.leadConfig, enabled: !prev.leadConfig.enabled }
+                        }))}
+                        className={`w-14 h-8 rounded-full transition-all relative ${quiz.leadConfig.enabled ? 'bg-blue-500' : 'bg-zinc-700'}`}
+                      >
+                        <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all ${quiz.leadConfig.enabled ? 'left-7' : 'left-1'}`} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {quiz.leadConfig.enabled && (
                   <div className="bg-zinc-900/30 border border-zinc-800 rounded-[32px] p-8 grid grid-cols-1 md:grid-cols-2 gap-12">
                     <div className="space-y-6">
                       <div className="space-y-2">
@@ -559,6 +594,7 @@ Usa un tono persuasivo y profesional en español.`;
                       </button>
                     </div>
                   </div>
+                  )}
                 </section>
 
                 {/* Redirect Configuration */}
