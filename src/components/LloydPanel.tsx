@@ -7,7 +7,7 @@ import {
   Puzzle, Activity, Image, ShieldCheck, Box, Database,
   Palette, Dumbbell, FileDown, Search, Copy, Check
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+// motion/react removed - caused TDZ bundling error
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { voiceService } from '../services/voiceService';
@@ -322,16 +322,9 @@ REGLAS IMPORTANTES:
         : "w-[400px] h-[600px] bg-white/[0.08] border border-white/30 rounded-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)]"
     )}>
       {/* Screenshot Flash Effect */}
-      <AnimatePresence>
-        {isFlashing && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-white z-[10000] pointer-events-none"
-          />
-        )}
-      </AnimatePresence>
+      {isFlashing && (
+        <div className="fixed inset-0 bg-white z-[10000] pointer-events-none animate-pulse" />
+      )}
 
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
