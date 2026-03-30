@@ -8,9 +8,9 @@ interface DownloadModalProps {
 }
 
 const DOWNLOAD_URLS = {
-  windows: 'https://github.com/sandramon2412-png/PRODUCIAQUIZ/releases/download/v1.0.4/Lloyd.Assistant.Setup.1.0.4.exe',
-  macIntel: 'https://github.com/sandramon2412-png/PRODUCIAQUIZ/releases/download/v1.0.4/Lloyd.Assistant-1.0.4.dmg',
-  macArm: 'https://github.com/sandramon2412-png/PRODUCIAQUIZ/releases/download/v1.0.4/Lloyd.Assistant-1.0.4-arm64.dmg',
+  windows: 'https://github.com/sandramon2412-png/PRODUCIAQUIZ/releases/download/v1.0.5/Lloyd.Assistant.Setup.1.0.5.exe',
+  macIntel: 'https://github.com/sandramon2412-png/PRODUCIAQUIZ/releases/download/v1.0.5/Lloyd.Assistant-1.0.5.dmg',
+  macArm: 'https://github.com/sandramon2412-png/PRODUCIAQUIZ/releases/download/v1.0.5/Lloyd.Assistant-1.0.5-arm64.dmg',
 };
 
 export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose }) => {

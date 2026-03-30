@@ -23,6 +23,9 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run build
+        env:
+          VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+          VITE_CLAUDE_API_KEY: ${{ secrets.VITE_CLAUDE_API_KEY }}
       - run: npx electron-builder --win --config
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -41,6 +44,9 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run build
+        env:
+          VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+          VITE_CLAUDE_API_KEY: ${{ secrets.VITE_CLAUDE_API_KEY }}
       - run: npx electron-builder --mac --config
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -60,8 +66,8 @@ jobs:
           path: artifacts
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.4
-          name: Lloyd Assistant v1.0.4
+          tag_name: v1.0.5
+          name: Lloyd Assistant v1.0.5
           files: |
             artifacts/windows-installer/*.exe
             artifacts/mac-installer/*.dmg
