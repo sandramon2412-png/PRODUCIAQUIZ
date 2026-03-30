@@ -295,6 +295,7 @@ export default function QuizBuilder() {
     setGenerateError('');
     try {
       const response = await aiService.generateQuizJSON(quiz.title, quiz.description);
+      console.log('=== AI RAW RESPONSE ===', response);
 
       let text = response;
       // Clean markdown if present
@@ -307,34 +308,47 @@ export default function QuizBuilder() {
       // Intentar encontrar el JSON en la respuesta
       const jsonStart = text.indexOf('{');
       const jsonEnd = text.lastIndexOf('}');
-      if (jsonStart !== -1 && jsonEnd !== -1) {
-        text = text.substring(jsonStart, jsonEnd + 1);
+      if (jsonStart === -1 || jsonEnd === -1) {
+        throw new Error('La IA no devolvió JSON válido. Respuesta: ' + text.substring(0, 200));
       }
+      text = text.substring(jsonStart, jsonEnd + 1);
+
+      console.log('=== CLEANED JSON ===', text.substring(0, 500));
 
       const aiQuiz = JSON.parse(text.trim());
 
+      console.log('=== PARSED QUIZ ===', 'questions:', aiQuiz.questions?.length, 'results:', aiQuiz.results?.length);
+
       // Validar que el quiz tenga la estructura correcta
       if (!aiQuiz.questions || !Array.isArray(aiQuiz.questions) || aiQuiz.questions.length === 0) {
-        throw new Error('La IA no generó preguntas válidas');
+        throw new Error('La IA no generó preguntas válidas. Intenta de nuevo.');
       }
       if (!aiQuiz.results || !Array.isArray(aiQuiz.results) || aiQuiz.results.length === 0) {
-        throw new Error('La IA no generó resultados válidos');
+        throw new Error('La IA no generó resultados válidos. Intenta de nuevo.');
       }
+
+      // Asegurar que cada pregunta tenga type
+      const questions = aiQuiz.questions.map((q: any) => ({
+        ...q,
+        type: q.type || 'multiple-choice',
+      }));
 
       setQuiz(prev => ({
         ...prev,
         title: aiQuiz.title || prev.title,
         description: aiQuiz.description || prev.description,
-        questions: aiQuiz.questions,
+        questions: questions,
         results: aiQuiz.results,
         id: prev.id,
         leadConfig: prev.leadConfig,
         redirectConfig: prev.redirectConfig,
         pixelConfig: prev.pixelConfig,
       }));
+
+      setGenerateError('');
     } catch (error: any) {
       console.error("AI Generation Error:", error);
-      setGenerateError(error.message || 'Error al generar el quiz. Intenta de nuevo.');
+      setGenerateError(error.message || 'Error al generar. Intenta de nuevo.');
     } finally {
       setIsGenerating(false);
     }
