@@ -335,17 +335,11 @@ export default function LandingPage() {
               Lloyd no es un chatbot común. Es un estratega de marketing que vive en tu pantalla, capaz de analizar tu oferta, redactar tus anuncios y optimizar tu negocio en tiempo real.
             </p>
             <div className="flex flex-wrap gap-5">
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent('open-lloyd'))}
-                className="px-10 py-5 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center gap-4 shadow-2xl shadow-purple-600/40 hover:scale-105"
-              >
-                Probar Lloyd Ahora <MessageSquare className="w-5 h-5" />
-              </button>
-              <button
+              <button 
                 onClick={() => window.dispatchEvent(new CustomEvent('trigger-download'))}
-                className="px-10 py-5 bg-zinc-900/50 backdrop-blur-xl border border-white/10 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all hover:bg-zinc-800 flex items-center gap-4"
+                className="px-10 py-5 bg-white text-black hover:bg-purple-500 hover:text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center gap-4 shadow-2xl"
               >
-                Descargar App <Download className="w-5 h-5" />
+                Descargar Lloyd <Download className="w-5 h-5" />
               </button>
             </div>
           </div>

@@ -7,7 +7,7 @@ import {
   Puzzle, Activity, Image, ShieldCheck, Box, Database,
   Palette, Dumbbell, FileDown, Search, Copy, Check
 } from 'lucide-react';
-
+import { motion, AnimatePresence } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { voiceService } from '../services/voiceService';
@@ -28,7 +28,6 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
   const [activeTab, setActiveTab] = useState<'chat' | 'bots' | 'notes' | 'todo'>('chat');
   const [selectedModel, setSelectedModel] = useState("Groq + Claude");
   const [showModelSelector, setShowModelSelector] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
   
   // Persistence
   const [notes, setNotes] = useState<string>(() => localStorage.getItem('producia_notes') || "");
@@ -52,11 +51,6 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
     return localStorage.getItem('producia_current_bot') || "General Assistant";
   });
   const [newTodoText, setNewTodoText] = useState("");
-
-  // Auto-scroll chat to bottom when new messages arrive
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chat, isLoading]);
 
   const switchBot = (botName: string) => {
     if (botName === currentBot) {
@@ -117,40 +111,35 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
   const captureScreen = async () => {
     if (isLoading) return;
     try {
-      let base64: string | null = null;
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: 'screen' } as any,
+      });
 
-      // Use Electron native capture if available (no permission dialog)
-      if ((window as any).electronAPI?.captureScreenshot) {
-        base64 = await (window as any).electronAPI.captureScreenshot();
-      } else {
-        // Fallback: browser getDisplayMedia (asks permission)
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-          video: { displaySurface: 'screen' } as any,
-        });
-        const video = document.createElement('video');
-        video.srcObject = stream;
-        await video.play();
-        await new Promise(resolve => setTimeout(resolve, 100));
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d')!;
-        ctx.drawImage(video, 0, 0);
-        stream.getTracks().forEach(track => track.stop());
-        base64 = canvas.toDataURL('image/png').split(',')[1];
-      }
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      await video.play();
 
-      if (!base64) {
-        setChat(prev => [...prev, { role: 'model' as const, text: 'No se pudo capturar la pantalla.' }]);
-        return;
-      }
+      // Wait a frame for video to render
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(video, 0, 0);
+
+      // Stop the stream
+      stream.getTracks().forEach(track => track.stop());
 
       // Flash effect
       setIsFlashing(true);
       setTimeout(() => setIsFlashing(false), 300);
 
+      // Convert to base64
+      const base64 = canvas.toDataURL('image/png').split(',')[1];
+
       // Add user message
-      setChat(prev => [...prev, { role: 'user' as const, text: 'Captura de pantalla tomada. Analizando...' }]);
+      setChat(prev => [...prev, { role: 'user' as const, text: '📸 Captura de pantalla tomada. Analizando...' }]);
       setIsLoading(true);
 
       // Send to Claude Vision
@@ -322,9 +311,16 @@ REGLAS IMPORTANTES:
         : "w-[400px] h-[600px] bg-white/[0.08] border border-white/30 rounded-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)]"
     )}>
       {/* Screenshot Flash Effect */}
-      {isFlashing && (
-        <div className="fixed inset-0 bg-white z-[10000] pointer-events-none animate-pulse" />
-      )}
+      <AnimatePresence>
+        {isFlashing && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-white z-[10000] pointer-events-none"
+          />
+        )}
+      </AnimatePresence>
 
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
@@ -483,7 +479,6 @@ REGLAS IMPORTANTES:
                 </div>
               </div>
             )}
-            <div ref={chatEndRef} />
           </div>
         )}
 

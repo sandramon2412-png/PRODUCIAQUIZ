@@ -29,13 +29,13 @@ export default defineConfig(({mode}) => {
           categories: ["productivity", "utilities"],
           icons: [
             {
-              src: "/icon-192.png",
+              src: "https://i.imgur.com/GWLu6bm.png",
               sizes: "192x192",
               type: "image/png",
               purpose: "any maskable"
             },
             {
-              src: "/icon-512.png",
+              src: "https://i.imgur.com/GWLu6bm.png",
               sizes: "512x512",
               type: "image/png",
               purpose: "any maskable"
@@ -70,10 +70,6 @@ export default defineConfig(({mode}) => {
         }
       })
     ],
-    base: './',
-    build: {
-      target: 'esnext',
-    },
     define: {},
     resolve: {
       alias: {

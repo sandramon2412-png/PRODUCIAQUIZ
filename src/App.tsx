@@ -3,30 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useRef, Component, type ReactNode } from 'react';
-
-class LloydErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; errorMsg: string }> {
-  constructor(props: any) { super(props); this.state = { hasError: false, errorMsg: '' }; }
-  static getDerivedStateFromError(error: Error) { return { hasError: true, errorMsg: error?.message || String(error) }; }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{width:400,background:'#111',border:'1px solid #333',borderRadius:24,padding:24}}>
-          <p style={{color:'white',fontWeight:'bold'}}>Lloyd error:</p>
-          <p style={{color:'#f44',fontSize:12,wordBreak:'break-all'}}>{this.state.errorMsg}</p>
-          <button onClick={() => this.setState({ hasError: false, errorMsg: '' })} style={{marginTop:12,padding:'8px 16px',background:'#7c3aed',color:'white',border:'none',borderRadius:12,fontWeight:'bold',cursor:'pointer'}}>
-            Reintentar
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
-import {
+import { 
   X, MessageSquare, Sparkles, Mic, Send, Loader2
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import Dashboard from './components/Dashboard';
@@ -41,7 +23,6 @@ import { voiceService } from './services/voiceService';
 import { aiService } from './services/aiService';
 import { LloydPanel } from './components/LloydPanel';
 import LloydStandalone from './components/LloydStandalone';
-import LloydElectron from './components/LloydElectron';
 import { DownloadModal } from './components/DownloadModal';
 import {
   FileText, Megaphone, PenTool, Search, ScrollText,
@@ -60,6 +41,7 @@ function cn(...inputs: ClassValue[]) {
 
 const FloatingAssistant = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const constraintsRef = useRef(null);
   const location = useLocation();
 
   useEffect(() => {
@@ -72,17 +54,26 @@ const FloatingAssistant = () => {
   if (location.pathname === '/lloyd') return null;
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-[9999]">
+    <div ref={constraintsRef} className="fixed inset-0 pointer-events-none z-[9999]">
       <div className="absolute bottom-8 right-8 flex flex-col items-end gap-4 pointer-events-auto">
-        {isOpen && (
-          <div className="pointer-events-auto animate-[fadeIn_0.2s_ease-out]">
-            <LloydErrorBoundary>
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              drag
+              dragConstraints={constraintsRef}
+              dragMomentum={false}
+              dragElastic={0.1}
+              initial={{ opacity: 0, scale: 0.95, y: 20, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, scale: 0.95, y: 20, filter: 'blur(10px)' }}
+              className="pointer-events-auto"
+            >
               <LloydPanel onClose={() => setIsOpen(false)} />
-            </LloydErrorBoundary>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <button
+        <button 
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
             "w-20 h-20 rounded-[28px] flex items-center justify-center shadow-[0_20px_40px_rgba(0,0,0,0.4)] transition-all duration-700 relative group",
@@ -130,11 +121,6 @@ const AppContent = () => {
       mq.removeEventListener('change', onchange);
     };
   }, []);
-
-  // In Electron, only show Lloyd Electron
-  if ((window as any).electronAPI?.isElectron) {
-    return <LloydElectron />;
-  }
 
   // In standalone PWA mode, only show Lloyd
   if (isStandalone) {
@@ -494,11 +480,6 @@ IMPORTANTE: No puedes navegar URLs. Si el usuario te da un link, pídele que peg
 };
 
 export default function App() {
-  // Electron: render Lloyd directly without Router (file:// doesn't support BrowserRouter)
-  if ((window as any).electronAPI?.isElectron) {
-    return <LloydElectron />;
-  }
-
   return (
     <Router>
       <AppContent />
