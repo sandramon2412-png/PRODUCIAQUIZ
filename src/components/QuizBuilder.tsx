@@ -11,7 +11,8 @@ import {
   Puzzle, Fingerprint, Activity, FileDown,
   Box, Dumbbell, Hammer, Database, Monitor,
   PlusCircle, MinusCircle, GripVertical,
-  CreditCard, LogIn, LogOut, PenTool, ShieldCheck
+  CreditCard, LogIn, LogOut, PenTool, ShieldCheck,
+  Users, Download, Trophy
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -150,12 +151,13 @@ export default function QuizBuilder() {
     }
   });
 
-  const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'settings'>('editor');
+  const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'settings' | 'leads'>('editor');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [quizLink, setQuizLink] = useState('');
+  const [quizLeads, setQuizLeads] = useState<any[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -167,6 +169,33 @@ export default function QuizBuilder() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // Cargar leads de este quiz cuando se abre la pestaña
+  useEffect(() => {
+    if (activeTab !== 'leads') return;
+    const allLeads = JSON.parse(localStorage.getItem('producia_leads') || '[]');
+    const filtered = allLeads.filter((l: any) => l.quizId === quiz.id);
+    setQuizLeads(filtered);
+    // También buscar en Supabase si hay sesión
+    if (user) {
+      supabase.from('leads').select('*').eq('quiz_id', quiz.id).then(({ data }) => {
+        if (data && data.length > 0) {
+          const supaLeads = data.map((l: any) => ({
+            id: l.id,
+            quizId: l.quiz_id,
+            name: l.name,
+            email: l.email,
+            score: l.score,
+            answers: l.answers,
+            submittedAt: l.submitted_at,
+          }));
+          // Merge sin duplicados
+          const ids = new Set(filtered.map((l: any) => l.id));
+          setQuizLeads([...filtered, ...supaLeads.filter((l: any) => !ids.has(l.id))]);
+        }
+      });
+    }
+  }, [activeTab, quiz.id, user]);
 
   const handleLogin = async () => {
     setIsLoggingIn(true);
@@ -364,6 +393,7 @@ Usa un tono persuasivo y profesional en español.`;
             { id: 'editor', icon: PenTool, label: 'Editor' },
             { id: 'preview', icon: Eye, label: 'Vista Previa' },
             { id: 'settings', icon: Settings, label: 'Ajustes' },
+            { id: 'leads', icon: Users, label: 'Leads' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -834,6 +864,121 @@ Usa un tono persuasivo y profesional en español.`;
                   </div>
                 </section>
               </>
+            )}
+
+            {activeTab === 'leads' && (
+              <div className="space-y-8 pb-20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-1.5 h-8 rounded-full bg-blue-500" />
+                    <div>
+                      <h2 className="text-2xl font-black text-white tracking-tight uppercase tracking-widest">Leads Capturados</h2>
+                      <p className="text-xs text-zinc-500 mt-1">{quizLeads.length} lead{quizLeads.length !== 1 ? 's' : ''} de este quiz</p>
+                    </div>
+                  </div>
+                  {quizLeads.length > 0 && (
+                    <button
+                      onClick={() => {
+                        const headers = ['Nombre', 'Email', 'Puntuación', 'Resultado', 'Fecha'];
+                        const rows = quizLeads.map(l => {
+                          const result = quiz.results.find(r => l.score >= r.minScore && l.score <= r.maxScore) || quiz.results[0];
+                          return [
+                            l.name || '',
+                            l.email || '',
+                            l.score,
+                            result?.title || '',
+                            new Date(l.submittedAt).toLocaleDateString(),
+                          ];
+                        });
+                        const csv = [headers, ...rows].map(r => r.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+                        const blob = new Blob([csv], { type: 'text/csv' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `leads-${quiz.id}-${new Date().toISOString().split('T')[0]}.csv`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                      className="px-6 py-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-black uppercase tracking-widest rounded-2xl transition-all flex items-center gap-2"
+                    >
+                      Exportar CSV <Download className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {quizLeads.length > 0 ? (
+                  <div className="bg-zinc-900/30 border border-zinc-800 rounded-[32px] overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-zinc-800/50">
+                            <th className="px-8 py-5 text-[10px] font-black text-zinc-600 uppercase tracking-widest">Lead</th>
+                            <th className="px-8 py-5 text-[10px] font-black text-zinc-600 uppercase tracking-widest">Puntuación</th>
+                            <th className="px-8 py-5 text-[10px] font-black text-zinc-600 uppercase tracking-widest">Resultado</th>
+                            <th className="px-8 py-5 text-[10px] font-black text-zinc-600 uppercase tracking-widest">Fecha</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {quizLeads.map((lead, i) => {
+                            const result = quiz.results.find(r => lead.score >= r.minScore && lead.score <= r.maxScore) || quiz.results[0];
+                            return (
+                              <tr key={lead.id || i} className="border-b border-zinc-800/30 hover:bg-zinc-800/20 transition-all">
+                                <td className="px-8 py-5">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 font-bold text-xs">
+                                      {(lead.name?.[0] || lead.email?.[0] || '?').toUpperCase()}
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-bold text-white">{lead.name || 'Sin nombre'}</p>
+                                      <p className="text-[10px] text-zinc-500">{lead.email || 'Sin email'}</p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-8 py-5">
+                                  <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-[10px] font-black">
+                                    {lead.score} pts
+                                  </span>
+                                </td>
+                                <td className="px-8 py-5">
+                                  <span className="flex items-center gap-1.5 text-xs font-bold text-zinc-300">
+                                    <Trophy className="w-3 h-3 text-yellow-500" />
+                                    {result?.title || '—'}
+                                  </span>
+                                </td>
+                                <td className="px-8 py-5 text-xs text-zinc-500">
+                                  {new Date(lead.submittedAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-zinc-900/30 border border-zinc-800 rounded-[40px] p-16 text-center">
+                    <div className="w-20 h-20 bg-zinc-800/50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                      <Users className="w-10 h-10 text-zinc-600" />
+                    </div>
+                    <h3 className="text-xl font-black text-white uppercase tracking-widest mb-2">Sin leads todavía</h3>
+                    <p className="text-zinc-500 text-sm max-w-xs mx-auto">
+                      Cuando alguien complete tu quiz {quiz.leadConfig.enabled ? 'y deje sus datos' : ''}, aparecerá aquí.
+                    </p>
+                    <button
+                      onClick={() => {
+                        const savedQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
+                        const quizData = { ...quiz, updatedAt: new Date().toISOString() };
+                        const updated = [quizData, ...savedQuizzes.filter((q: any) => q.id !== quiz.id)];
+                        localStorage.setItem('quizzes', JSON.stringify(updated));
+                        navigator.clipboard.writeText(`${window.location.origin}/quiz/${quiz.id}`);
+                      }}
+                      className="mt-6 px-8 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 mx-auto"
+                    >
+                      <Copy className="w-4 h-4" /> Copiar Link del Quiz
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
 
             {activeTab === 'preview' && (
