@@ -51,21 +51,36 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // Try loading from local files
-  const localUrl = `file://${path.join(__dirname, './dist/index.html')}`;
+  // Load the app
   const devUrl = process.env.ELECTRON_START_URL;
 
-  const urlToLoad = devUrl || localUrl;
-
-  mainWindow.loadURL(urlToLoad).catch((err) => {
-    console.error('Failed to load URL:', err);
-    // Show error page so user sees something instead of blank
-    mainWindow.loadURL(`data:text/html,<html><body style="background:#0d0d0d;color:white;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h2>Lloyd Assistant</h2><p>Error al cargar. Reinicia la app.</p></div></body></html>`);
-  });
+  if (devUrl) {
+    mainWindow.loadURL(devUrl).catch((err) => {
+      console.error('Failed to load dev URL:', err);
+    });
+  } else {
+    // Use loadFile for local files - handles Windows paths correctly
+    const indexPath = path.join(__dirname, 'dist', 'index.html');
+    mainWindow.loadFile(indexPath).catch((err) => {
+      console.error('Failed to load file:', err);
+      mainWindow.loadURL(`data:text/html,<html><body style="background:#0d0d0d;color:white;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h2>Lloyd Assistant</h2><p>Error al cargar. Reinicia la app.</p><p style="color:gray;font-size:12px">${err.message}</p></div></body></html>`);
+    });
+  }
 
   // Log any page errors for debugging
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.error('Page failed to load:', errorCode, errorDescription);
+  });
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('Page loaded successfully');
+    // Inject CSS to ensure full height in case styles don't load
+    mainWindow.webContents.insertCSS('html,body,#root{height:100%!important;width:100%!important;margin:0!important;padding:0!important;overflow:hidden!important;background:#0d0d0d!important;}');
+  });
+
+  // Log console messages from renderer for debugging
+  mainWindow.webContents.on('console-message', (event, level, message) => {
+    console.log('Renderer:', message);
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
