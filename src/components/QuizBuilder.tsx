@@ -246,12 +246,26 @@ export default function QuizBuilder() {
   const generateWithAI = async () => {
     setIsGenerating(true);
     try {
-      const prompt = `Genera un quiz de alta conversión para un funnel de ventas sobre "${quiz.title}".
-      Devuelve SOLO un objeto JSON válido (sin markdown, sin \`\`\`) con esta estructura exacta:
-      {"title": "...", "description": "...", "questions": [{"id": "1", "text": "...", "type": "multiple-choice", "options": [{"id": "o1", "text": "...", "value": 1}]}], "results": [{"id": "r1", "title": "...", "desc": "...", "minScore": 0, "maxScore": 5}]}
-      Genera mínimo 4 preguntas con 4 opciones cada una y 3 resultados. Usa un tono persuasivo y profesional en español.`;
+      const prompt = `Genera un quiz de alta conversión para un funnel de ventas.
 
-      const systemInstruction = 'Eres un experto en quiz funnels de alta conversión. Solo responde con JSON válido, sin explicaciones ni markdown.';
+DATOS DEL QUIZ:
+- Título: "${quiz.title}"
+- Descripción/Nicho: "${quiz.description}"
+
+INSTRUCCIONES:
+- TODAS las preguntas deben estar directamente relacionadas con el nicho/tema descrito arriba.
+- Las preguntas deben diagnosticar el nivel del usuario en ese tema específico.
+- Las opciones deben ir de menor a mayor experiencia/nivel (valor 1 = principiante, valor 4 = avanzado).
+- Los resultados deben dar recomendaciones específicas para ese nicho.
+- Genera EXACTAMENTE 5 preguntas con 4 opciones cada una y 3 resultados.
+- Los rangos de puntuación de los resultados deben cubrir del 5 al 20 sin huecos.
+
+Devuelve SOLO un objeto JSON válido (sin markdown, sin \`\`\`) con esta estructura exacta:
+{"title": "...", "description": "...", "questions": [{"id": "1", "text": "...", "type": "multiple-choice", "options": [{"id": "o1", "text": "...", "value": 1}, {"id": "o2", "text": "...", "value": 2}, {"id": "o3", "text": "...", "value": 3}, {"id": "o4", "text": "...", "value": 4}]}, ...], "results": [{"id": "r1", "title": "...", "desc": "...", "minScore": 5, "maxScore": 10}, {"id": "r2", "title": "...", "desc": "...", "minScore": 11, "maxScore": 15}, {"id": "r3", "title": "...", "desc": "...", "minScore": 16, "maxScore": 20}]}
+
+Usa un tono persuasivo y profesional en español.`;
+
+      const systemInstruction = 'Eres un experto en quiz funnels de alta conversión. Solo responde con JSON válido, sin explicaciones ni markdown. Las preguntas DEBEN ser específicas al nicho/tema que el usuario indicó.';
 
       const response = await aiService.generateCustomBotResponse(prompt, systemInstruction);
 
@@ -796,8 +810,15 @@ export default function QuizBuilder() {
                   <p className="text-zinc-500 max-w-md mx-auto">
                     Aquí puedes interactuar con tu quiz tal como lo verán tus clientes. Todos los cambios se guardan automáticamente.
                   </p>
-                  <button 
-                    onClick={() => window.open(`${window.location.origin}/quiz/${quiz.id}`, '_blank')}
+                  <button
+                    onClick={() => {
+                      // Guardar quiz en localStorage antes de abrir vista previa
+                      const savedQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
+                      const quizData = { ...quiz, updatedAt: new Date().toISOString() };
+                      const updated = [quizData, ...savedQuizzes.filter((q: any) => q.id !== quiz.id)];
+                      localStorage.setItem('quizzes', JSON.stringify(updated));
+                      window.open(`${window.location.origin}/quiz/${quiz.id}`, '_blank');
+                    }}
                     className="px-8 py-4 bg-zinc-800 hover:bg-zinc-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 mx-auto"
                   >
                     <ExternalLink className="w-4 h-4" /> Abrir en Nueva Pestaña

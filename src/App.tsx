@@ -50,8 +50,8 @@ const FloatingAssistant = () => {
     return () => window.removeEventListener('open-lloyd', handleOpen);
   }, []);
 
-  // Hide the floating button when we are in the standalone Lloyd view
-  if (location.pathname === '/lloyd') return null;
+  // Hide the floating button on standalone Lloyd view and public quiz pages
+  if (location.pathname === '/lloyd' || location.pathname.startsWith('/quiz/')) return null;
 
   return (
     <div ref={constraintsRef} className="fixed inset-0 pointer-events-none z-[9999]">
