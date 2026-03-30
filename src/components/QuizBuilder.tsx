@@ -288,31 +288,13 @@ export default function QuizBuilder() {
     alert("Exportando como HTML estático (Beta)...");
   };
 
+  const [generateError, setGenerateError] = useState('');
+
   const generateWithAI = async () => {
     setIsGenerating(true);
+    setGenerateError('');
     try {
-      const prompt = `Genera un quiz de alta conversión para un funnel de ventas.
-
-DATOS DEL QUIZ:
-- Título: "${quiz.title}"
-- Descripción/Nicho: "${quiz.description}"
-
-INSTRUCCIONES:
-- TODAS las preguntas deben estar directamente relacionadas con el nicho/tema descrito arriba.
-- Las preguntas deben diagnosticar el nivel del usuario en ese tema específico.
-- Las opciones deben ir de menor a mayor experiencia/nivel (valor 1 = principiante, valor 4 = avanzado).
-- Los resultados deben dar recomendaciones específicas para ese nicho.
-- Genera EXACTAMENTE 5 preguntas con 4 opciones cada una y 3 resultados.
-- Los rangos de puntuación de los resultados deben cubrir del 5 al 20 sin huecos.
-
-Devuelve SOLO un objeto JSON válido (sin markdown, sin \`\`\`) con esta estructura exacta:
-{"title": "...", "description": "...", "questions": [{"id": "1", "text": "...", "type": "multiple-choice", "options": [{"id": "o1", "text": "...", "value": 1}, {"id": "o2", "text": "...", "value": 2}, {"id": "o3", "text": "...", "value": 3}, {"id": "o4", "text": "...", "value": 4}]}, ...], "results": [{"id": "r1", "title": "...", "desc": "...", "minScore": 5, "maxScore": 10}, {"id": "r2", "title": "...", "desc": "...", "minScore": 11, "maxScore": 15}, {"id": "r3", "title": "...", "desc": "...", "minScore": 16, "maxScore": 20}]}
-
-Usa un tono persuasivo y profesional en español.`;
-
-      const systemInstruction = 'Eres un experto en quiz funnels de alta conversión. Solo responde con JSON válido, sin explicaciones ni markdown. Las preguntas DEBEN ser específicas al nicho/tema que el usuario indicó.';
-
-      const response = await aiService.generateCustomBotResponse(prompt, systemInstruction);
+      const response = await aiService.generateQuizJSON(quiz.title, quiz.description);
 
       let text = response;
       // Clean markdown if present
@@ -322,15 +304,37 @@ Usa un tono persuasivo y profesional en español.`;
         text = text.split('```')[1].split('```')[0];
       }
 
+      // Intentar encontrar el JSON en la respuesta
+      const jsonStart = text.indexOf('{');
+      const jsonEnd = text.lastIndexOf('}');
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        text = text.substring(jsonStart, jsonEnd + 1);
+      }
+
       const aiQuiz = JSON.parse(text.trim());
+
+      // Validar que el quiz tenga la estructura correcta
+      if (!aiQuiz.questions || !Array.isArray(aiQuiz.questions) || aiQuiz.questions.length === 0) {
+        throw new Error('La IA no generó preguntas válidas');
+      }
+      if (!aiQuiz.results || !Array.isArray(aiQuiz.results) || aiQuiz.results.length === 0) {
+        throw new Error('La IA no generó resultados válidos');
+      }
 
       setQuiz(prev => ({
         ...prev,
-        ...aiQuiz,
-        id: prev.id // keep original id
+        title: aiQuiz.title || prev.title,
+        description: aiQuiz.description || prev.description,
+        questions: aiQuiz.questions,
+        results: aiQuiz.results,
+        id: prev.id,
+        leadConfig: prev.leadConfig,
+        redirectConfig: prev.redirectConfig,
+        pixelConfig: prev.pixelConfig,
       }));
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Generation Error:", error);
+      setGenerateError(error.message || 'Error al generar el quiz. Intenta de nuevo.');
     } finally {
       setIsGenerating(false);
     }
@@ -425,14 +429,20 @@ Usa un tono persuasivo y profesional en español.`;
                       <h2 className="text-3xl font-black text-white tracking-tighter uppercase tracking-widest">Configuración Base</h2>
                       <p className="text-zinc-500 text-sm">Define el gancho y la promesa de tu funnel.</p>
                     </div>
-                    <button 
+                    <button
                       onClick={generateWithAI}
                       disabled={isGenerating}
                       className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-purple-500/20"
                     >
-                      <Sparkles className="w-4 h-4" /> Generar con AI
+                      {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                      {isGenerating ? 'Generando...' : 'Generar con AI'}
                     </button>
                   </div>
+                  {generateError && (
+                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-sm text-red-400 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" /> {generateError}
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">

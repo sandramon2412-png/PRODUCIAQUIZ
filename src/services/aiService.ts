@@ -9,7 +9,7 @@ interface Message {
   parts: { text: string }[];
 }
 
-async function callGroq(prompt: string, systemInstruction: string, history: Message[] = []): Promise<string> {
+async function callGroq(prompt: string, systemInstruction: string, history: Message[] = [], options?: { temperature?: number; max_tokens?: number }): Promise<string> {
   if (!GROQ_API_KEY) throw new Error('Groq API key no configurada');
 
   const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
@@ -34,8 +34,8 @@ async function callGroq(prompt: string, systemInstruction: string, history: Mess
     body: JSON.stringify({
       model: GROQ_MODEL,
       messages,
-      temperature: 0.7,
-      max_tokens: 4096,
+      temperature: options?.temperature ?? 0.7,
+      max_tokens: options?.max_tokens ?? 4096,
     }),
   });
 
@@ -200,6 +200,63 @@ IMPORTANTE: No puedes navegar por URLs directamente. Si el usuario te da un link
     }
 
     return 'Lo siento, ambos servicios de IA estan temporalmente no disponibles. Por favor intenta de nuevo en unos momentos.';
+  }
+
+  async generateQuizJSON(title: string, description: string): Promise<string> {
+    if (!this.hasApiKeys()) {
+      throw new Error('API keys no configuradas');
+    }
+
+    const systemInstruction = `Responde UNICAMENTE con un objeto JSON valido. Sin texto antes ni despues. Sin markdown. Sin explicaciones.`;
+
+    const prompt = `Genera un quiz en español sobre: "${title}" - ${description}
+
+El JSON debe tener esta estructura EXACTA:
+{
+  "title": "titulo del quiz",
+  "description": "descripcion corta",
+  "questions": [
+    {"id": "1", "text": "pregunta sobre el tema", "type": "multiple-choice", "options": [{"id": "o1", "text": "opcion 1", "value": 1}, {"id": "o2", "text": "opcion 2", "value": 2}, {"id": "o3", "text": "opcion 3", "value": 3}, {"id": "o4", "text": "opcion 4", "value": 4}]},
+    {"id": "2", "text": "pregunta 2", "type": "multiple-choice", "options": [{"id": "o1", "text": "opcion 1", "value": 1}, {"id": "o2", "text": "opcion 2", "value": 2}, {"id": "o3", "text": "opcion 3", "value": 3}, {"id": "o4", "text": "opcion 4", "value": 4}]},
+    {"id": "3", "text": "pregunta 3", "type": "multiple-choice", "options": [{"id": "o1", "text": "opcion 1", "value": 1}, {"id": "o2", "text": "opcion 2", "value": 2}, {"id": "o3", "text": "opcion 3", "value": 3}, {"id": "o4", "text": "opcion 4", "value": 4}]},
+    {"id": "4", "text": "pregunta 4", "type": "multiple-choice", "options": [{"id": "o1", "text": "opcion 1", "value": 1}, {"id": "o2", "text": "opcion 2", "value": 2}, {"id": "o3", "text": "opcion 3", "value": 3}, {"id": "o4", "text": "opcion 4", "value": 4}]},
+    {"id": "5", "text": "pregunta 5", "type": "multiple-choice", "options": [{"id": "o1", "text": "opcion 1", "value": 1}, {"id": "o2", "text": "opcion 2", "value": 2}, {"id": "o3", "text": "opcion 3", "value": 3}, {"id": "o4", "text": "opcion 4", "value": 4}]}
+  ],
+  "results": [
+    {"id": "r1", "title": "Principiante", "desc": "descripcion para principiantes", "minScore": 5, "maxScore": 10},
+    {"id": "r2", "title": "Intermedio", "desc": "descripcion para intermedios", "minScore": 11, "maxScore": 15},
+    {"id": "r3", "title": "Avanzado", "desc": "descripcion para avanzados", "minScore": 16, "maxScore": 20}
+  ]
+}
+
+REGLAS:
+- Las 5 preguntas DEBEN ser sobre "${title}" y "${description}"
+- Cada pregunta tiene EXACTAMENTE 4 opciones con valores 1,2,3,4
+- Los 3 resultados cubren rangos 5-10, 11-15, 16-20
+- Tono persuasivo y profesional en español
+- SOLO JSON, nada mas`;
+
+    // Intentar con Groq primero (temperatura baja para JSON confiable)
+    if (GROQ_API_KEY) {
+      try {
+        const response = await callGroq(prompt, systemInstruction, [], { temperature: 0.3, max_tokens: 8192 });
+        if (response) return response;
+      } catch (error) {
+        console.warn('Groq fallo para quiz, intentando Claude...', error);
+      }
+    }
+
+    // Fallback a Claude
+    if (CLAUDE_API_KEY) {
+      try {
+        const response = await callClaude(prompt, systemInstruction, []);
+        if (response) return response;
+      } catch (error) {
+        console.error('Claude tambien fallo para quiz:', error);
+      }
+    }
+
+    throw new Error('No se pudo generar el quiz. Verifica tus API keys.');
   }
 
   async generateImage(prompt: string): Promise<string | null> {
