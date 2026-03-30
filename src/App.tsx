@@ -3,31 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useRef, Component, type ReactNode, type ErrorInfo, lazy, Suspense } from 'react';
-
-// Error boundary to prevent LloydPanel crash from blanking the whole page
-class LloydErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; errorMsg: string }> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false, errorMsg: '' };
-  }
-  static getDerivedStateFromError(error: Error) { return { hasError: true, errorMsg: error?.message || String(error) }; }
-  componentDidCatch(error: Error, info: ErrorInfo) { console.error('Lloyd error:', error, info); }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="w-[400px] bg-zinc-900 border border-white/10 rounded-[32px] p-6">
-          <p className="text-white font-bold mb-2">Lloyd error:</p>
-          <p className="text-red-400 text-xs mb-4 break-all">{this.state.errorMsg}</p>
-          <button onClick={() => this.setState({ hasError: false, errorMsg: '' })} className="px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-bold">
-            Reintentar
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   X, MessageSquare, Sparkles, Mic, Send, Loader2
@@ -43,9 +19,11 @@ import ChatBot from './components/ChatBot';
 import PricingPage from './components/PricingPage';
 import AuthPage from './components/AuthPage';
 import SettingsPage from './components/SettingsPage';
-const LloydPanel = lazy(() => import('./components/LloydPanel').then(m => ({ default: m.LloydPanel })));
-const LloydStandalone = lazy(() => import('./components/LloydStandalone'));
-const LloydElectron = lazy(() => import('./components/LloydElectron'));
+import { voiceService } from './services/voiceService';
+import { aiService } from './services/aiService';
+import { LloydPanel } from './components/LloydPanel';
+import LloydStandalone from './components/LloydStandalone';
+import LloydElectron from './components/LloydElectron';
 import { DownloadModal } from './components/DownloadModal';
 import {
   FileText, Megaphone, PenTool, Search, ScrollText,
@@ -91,11 +69,7 @@ const FloatingAssistant = () => {
               exit={{ opacity: 0, scale: 0.95, y: 20, filter: 'blur(10px)' }}
               className="pointer-events-auto"
             >
-              <LloydErrorBoundary>
-                <Suspense fallback={<div className="w-[400px] h-[600px] bg-zinc-900 rounded-[32px] flex items-center justify-center"><div className="text-white/50 text-sm">Cargando Lloyd...</div></div>}>
-                  <LloydPanel onClose={() => setIsOpen(false)} />
-                </Suspense>
-              </LloydErrorBoundary>
+              <LloydPanel onClose={() => setIsOpen(false)} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -151,12 +125,12 @@ const AppContent = () => {
 
   // In Electron, only show Lloyd Electron
   if ((window as any).electronAPI?.isElectron) {
-    return <Suspense fallback={<div className="h-screen bg-[#0d0d0d]" />}><LloydElectron /></Suspense>;
+    return <LloydElectron />;
   }
 
   // In standalone PWA mode, only show Lloyd
   if (isStandalone) {
-    return <Suspense fallback={<div className="h-screen bg-[#050505]" />}><LloydStandalone /></Suspense>;
+    return <LloydStandalone />;
   }
 
   return (
@@ -173,7 +147,7 @@ const AppContent = () => {
         <Route path="/login" element={<AuthPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/lloyd" element={<Suspense fallback={<div className="h-screen bg-[#050505]" />}><LloydStandalone /></Suspense>} />
+        <Route path="/lloyd" element={<LloydStandalone />} />
         <Route path="/bot/modelador" element={<ModeladorBot />} />
 
         {/* Facebook Ad Library Analyzer */}
@@ -514,7 +488,7 @@ IMPORTANTE: No puedes navegar URLs. Si el usuario te da un link, pídele que peg
 export default function App() {
   // Electron: render Lloyd directly without Router (file:// doesn't support BrowserRouter)
   if ((window as any).electronAPI?.isElectron) {
-    return <Suspense fallback={<div className="h-screen bg-[#0d0d0d]" />}><LloydElectron /></Suspense>;
+    return <LloydElectron />;
   }
 
   return (

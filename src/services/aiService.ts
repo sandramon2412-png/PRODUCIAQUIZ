@@ -1,7 +1,21 @@
-const GROQ_API_KEY = (import.meta as any).env?.VITE_GROQ_API_KEY || localStorage.getItem('producia_groq_key') || '';
-const CLAUDE_API_KEY = (import.meta as any).env?.VITE_CLAUDE_API_KEY || localStorage.getItem('producia_claude_key') || '';
+import Groq from 'groq-sdk';
 
+const GROQ_API_KEY = (import.meta as any).env?.VITE_GROQ_API_KEY || '';
+const CLAUDE_API_KEY = (import.meta as any).env?.VITE_CLAUDE_API_KEY || '';
+
+// Lazy init - only create when needed and key exists
+let groqClient: Groq | null = null;
+function getGroqClient(): Groq | null {
+  if (!GROQ_API_KEY) return null;
+  if (!groqClient) {
+    groqClient = new Groq({ apiKey: GROQ_API_KEY, dangerouslyAllowBrowser: true });
+  }
+  return groqClient;
+}
+
+// Groq model (fast, free)
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
+// Claude model (smart, fallback)
 const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
 
 interface Message {
@@ -10,7 +24,8 @@ interface Message {
 }
 
 async function callGroq(prompt: string, systemInstruction: string, history: Message[] = []): Promise<string> {
-  if (!GROQ_API_KEY) throw new Error('Groq API key no configurada');
+  const client = getGroqClient();
+  if (!client) throw new Error('Groq API key no configurada');
 
   const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
     { role: 'system', content: systemInstruction },
@@ -25,27 +40,14 @@ async function callGroq(prompt: string, systemInstruction: string, history: Mess
 
   messages.push({ role: 'user', content: prompt });
 
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      messages,
-      temperature: 0.7,
-      max_tokens: 4096,
-    }),
+  const response = await client.chat.completions.create({
+    model: GROQ_MODEL,
+    messages,
+    temperature: 0.7,
+    max_tokens: 4096,
   });
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Groq API error ${response.status}: ${err}`);
-  }
-
-  const data = await response.json();
-  return data.choices[0]?.message?.content || '';
+  return response.choices[0]?.message?.content || '';
 }
 
 async function callClaude(prompt: string, systemInstruction: string, history: Message[] = []): Promise<string> {

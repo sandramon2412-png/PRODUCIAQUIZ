@@ -7,30 +7,14 @@ import {
   Puzzle, Activity, Image, ShieldCheck, Box, Database,
   Palette, Dumbbell, FileDown, Search, Copy, Check
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+import { voiceService } from '../services/voiceService';
+import { aiService } from '../services/aiService';
 
-// Inline cn to avoid clsx/tailwind-merge TDZ bundling issues
-function cn(...classes: (string | boolean | undefined | null)[]) {
-  return classes.filter(Boolean).join(' ');
-}
-
-// Dynamic imports to avoid TDZ - loaded on first use
-let _voiceService: any = null;
-let _aiService: any = null;
-
-async function getVoiceService() {
-  if (!_voiceService) {
-    const mod = await import('../services/voiceService');
-    _voiceService = mod.voiceService;
-  }
-  return _voiceService;
-}
-
-async function getAiService() {
-  if (!_aiService) {
-    const mod = await import('../services/aiService');
-    _aiService = mod.aiService;
-  }
-  return _aiService;
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
 }
 
 interface LloydPanelProps {
@@ -170,8 +154,7 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
       setIsLoading(true);
 
       // Send to Claude Vision
-      const ai = await getAiService();
-      const response = await ai.analyzeScreenshot(base64);
+      const response = await aiService.analyzeScreenshot(base64);
       setChat(prev => [...prev, { role: 'model' as const, text: response }]);
     } catch (error: any) {
       if (error.name !== 'NotAllowedError') {
@@ -186,8 +169,7 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
     const msgToSend = text || message;
     if (!msgToSend.trim() && !isScreenshot || isLoading) return;
 
-    const ai = await getAiService();
-    if (!ai.hasApiKeys()) {
+    if (!aiService.hasApiKeys()) {
       setChat(prev => [...prev,
         { role: 'user' as const, text: msgToSend },
         { role: 'model' as const, text: 'Las API keys de IA no estan configuradas. El administrador debe agregar VITE_GROQ_API_KEY y/o VITE_CLAUDE_API_KEY en Vercel y redesplegar el proyecto.' }
@@ -247,19 +229,18 @@ REGLAS IMPORTANTES:
 - Ayuda directamente con lo que el usuario pida.`;
       }
 
-      const response = await ai.generateCustomBotResponse(userMsg, systemPrompt, history);
-
+      const response = await aiService.generateCustomBotResponse(userMsg, systemPrompt, history);
+      
       if (!response) {
         throw new Error('No se recibió respuesta del servicio de IA.');
       }
 
       const aiResponse = response;
-
+      
       setChat(prev => [...prev, { role: 'model', text: aiResponse }]);
-
+      
       if (isListening || text) {
-        const voice = await getVoiceService();
-        voice.speak(aiResponse);
+        voiceService.speak(aiResponse);
       }
     } catch (error: any) {
       console.error("Assistant Error:", error);
@@ -280,15 +261,14 @@ REGLAS IMPORTANTES:
     }
   };
 
-  const toggleVoice = async () => {
-    const voice = await getVoiceService();
+  const toggleVoice = () => {
     if (isListening) {
-      voice.stopListening();
+      voiceService.stopListening();
       setIsListening(false);
     } else {
       setIsListening(true);
-      voice.startListening(
-        (text: string) => handleSend(text),
+      voiceService.startListening(
+        (text) => handleSend(text),
         () => setIsListening(false)
       );
     }
@@ -342,9 +322,16 @@ REGLAS IMPORTANTES:
         : "w-[400px] h-[600px] bg-white/[0.08] border border-white/30 rounded-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)]"
     )}>
       {/* Screenshot Flash Effect */}
-      {isFlashing && (
-        <div className="fixed inset-0 bg-white z-[10000] pointer-events-none animate-pulse" />
-      )}
+      <AnimatePresence>
+        {isFlashing && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-white z-[10000] pointer-events-none"
+          />
+        )}
+      </AnimatePresence>
 
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
