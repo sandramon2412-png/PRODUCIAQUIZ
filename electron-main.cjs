@@ -1,6 +1,12 @@
 const { app, BrowserWindow, ipcMain, desktopCapturer, screen, globalShortcut, nativeImage } = require('electron');
 const path = require('path');
 
+// SINGLE INSTANCE LOCK - prevents opening multiple windows
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+
 let mainWindow = null;
 let isCompact = false;
 
@@ -23,6 +29,7 @@ function createWindow() {
     skipTaskbar: false,
     alwaysOnTop: false,
     hasShadow: false,
+    show: false, // Don't show until ready
     backgroundColor: '#00000000',
     webPreferences: {
       nodeIntegration: false,
@@ -31,8 +38,10 @@ function createWindow() {
     },
   });
 
-  // Let clicks pass through transparent areas
-  mainWindow.setIgnoreMouseEvents(false);
+  // Show window only when content is ready (prevents blank flash)
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
 
   // Load the app
   const startUrl = process.env.ELECTRON_START_URL || `file://${path.join(__dirname, './dist/index.html')}`;
@@ -49,14 +58,18 @@ function createWindow() {
   });
 }
 
-// IPC Handlers
+// If user tries to open a second instance, focus the existing window
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (!mainWindow.isVisible()) mainWindow.show();
+    mainWindow.focus();
+  }
+});
 
-// Toggle compact/expanded mode
+// IPC Handlers
 ipcMain.handle('toggle-compact', () => {
   if (!mainWindow) return;
-
   const [x, y] = mainWindow.getPosition();
-
   if (isCompact) {
     mainWindow.setSize(EXPANDED_WIDTH, EXPANDED_HEIGHT);
     mainWindow.setPosition(x, y - (EXPANDED_HEIGHT - COMPACT_HEIGHT));
@@ -66,32 +79,22 @@ ipcMain.handle('toggle-compact', () => {
     mainWindow.setPosition(x, y + (EXPANDED_HEIGHT - COMPACT_HEIGHT));
     isCompact = true;
   }
-
   return isCompact;
 });
 
-// Get compact state
 ipcMain.handle('get-compact-state', () => isCompact);
 
-// Capture screenshot
 ipcMain.handle('capture-screenshot', async () => {
   try {
-    // Hide window before capture so it doesn't appear in screenshot
     if (mainWindow) mainWindow.hide();
     await new Promise(resolve => setTimeout(resolve, 200));
-
     const sources = await desktopCapturer.getSources({
       types: ['screen'],
       thumbnailSize: { width: 1920, height: 1080 },
     });
-
-    // Show window again
     if (mainWindow) mainWindow.show();
-
     if (sources.length === 0) return null;
-
-    const screenshot = sources[0].thumbnail;
-    return screenshot.toDataURL().split(',')[1];
+    return sources[0].thumbnail.toDataURL().split(',')[1];
   } catch (error) {
     console.error('Screenshot capture failed:', error);
     if (mainWindow) mainWindow.show();
@@ -99,12 +102,10 @@ ipcMain.handle('capture-screenshot', async () => {
   }
 });
 
-// Minimize
 ipcMain.handle('minimize-to-tray', () => {
   if (mainWindow) mainWindow.hide();
 });
 
-// Toggle always on top
 ipcMain.handle('toggle-always-on-top', () => {
   if (!mainWindow) return false;
   const current = mainWindow.isAlwaysOnTop();
@@ -112,7 +113,6 @@ ipcMain.handle('toggle-always-on-top', () => {
   return !current;
 });
 
-// Close app
 ipcMain.handle('close-app', () => {
   app.quit();
 });
@@ -121,7 +121,6 @@ ipcMain.handle('close-app', () => {
 app.whenReady().then(() => {
   createWindow();
 
-  // Global shortcut to toggle visibility
   globalShortcut.register('CommandOrControl+Shift+L', () => {
     if (mainWindow) {
       if (mainWindow.isVisible()) {
@@ -151,3 +150,5 @@ app.on('window-all-closed', () => {
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
 });
+
+} // end of single instance lock

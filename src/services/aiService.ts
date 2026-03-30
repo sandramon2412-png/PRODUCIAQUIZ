@@ -1,7 +1,7 @@
 import Groq from 'groq-sdk';
 
-const GROQ_API_KEY = (import.meta as any).env?.VITE_GROQ_API_KEY || '';
-const CLAUDE_API_KEY = (import.meta as any).env?.VITE_CLAUDE_API_KEY || '';
+const GROQ_API_KEY = (import.meta as any).env?.VITE_GROQ_API_KEY || localStorage.getItem('producia_groq_key') || '';
+const CLAUDE_API_KEY = (import.meta as any).env?.VITE_CLAUDE_API_KEY || localStorage.getItem('producia_claude_key') || '';
 
 // Lazy init - only create when needed and key exists
 let groqClient: Groq | null = null;
