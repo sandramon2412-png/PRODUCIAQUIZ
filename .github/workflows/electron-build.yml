@@ -66,8 +66,8 @@ jobs:
           path: artifacts
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.7
-          name: Lloyd Assistant v1.0.7
+          tag_name: v1.0.8
+          name: Lloyd Assistant v1.0.8
           files: |
             artifacts/windows-installer/*.exe
             artifacts/mac-installer/*.dmg
