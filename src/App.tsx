@@ -3,7 +3,32 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Component, type ReactNode, type ErrorInfo } from 'react';
+
+// Error boundary to prevent LloydPanel crash from blanking the whole page
+class LloydErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error('Lloyd error:', error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-[400px] h-[600px] bg-zinc-900 border border-white/10 rounded-[32px] flex items-center justify-center">
+          <div className="text-center p-6">
+            <p className="text-white font-bold mb-2">Lloyd encontró un error</p>
+            <button onClick={() => this.setState({ hasError: false })} className="px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-bold">
+              Reintentar
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   X, MessageSquare, Sparkles, Mic, Send, Loader2
@@ -69,7 +94,9 @@ const FloatingAssistant = () => {
               exit={{ opacity: 0, scale: 0.95, y: 20, filter: 'blur(10px)' }}
               className="pointer-events-auto"
             >
-              <LloydPanel onClose={() => setIsOpen(false)} />
+              <LloydErrorBoundary>
+                <LloydPanel onClose={() => setIsOpen(false)} />
+              </LloydErrorBoundary>
             </motion.div>
           )}
         </AnimatePresence>
