@@ -27,7 +27,7 @@ function createWindow() {
     transparent: true,
     resizable: false,
     skipTaskbar: false,
-    alwaysOnTop: false,
+    alwaysOnTop: true,
     hasShadow: false,
     show: false, // Don't show until ready
     backgroundColor: '#00000000',
@@ -37,6 +37,9 @@ function createWindow() {
       preload: path.join(__dirname, 'electron-preload.cjs'),
     },
   });
+
+  // Use 'floating' level - stays on top but doesn't block other windows
+  mainWindow.setAlwaysOnTop(true, 'floating');
 
   // Show window only when content is ready (prevents blank flash)
   mainWindow.once('ready-to-show', () => {
@@ -109,7 +112,11 @@ ipcMain.handle('minimize-to-tray', () => {
 ipcMain.handle('toggle-always-on-top', () => {
   if (!mainWindow) return false;
   const current = mainWindow.isAlwaysOnTop();
-  mainWindow.setAlwaysOnTop(!current);
+  if (current) {
+    mainWindow.setAlwaysOnTop(false);
+  } else {
+    mainWindow.setAlwaysOnTop(true, 'floating');
+  }
   return !current;
 });
 
