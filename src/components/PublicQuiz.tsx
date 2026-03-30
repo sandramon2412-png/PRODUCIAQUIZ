@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   CheckCircle2, ArrowRight, Sparkles, ShieldCheck, 
   Zap, Trophy, Target, Rocket, Layout, ChevronRight,

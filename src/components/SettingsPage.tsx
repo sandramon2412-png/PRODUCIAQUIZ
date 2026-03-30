@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import {
   ArrowLeft, User, Crown, Zap, Shield, LogOut,
   Mail, Calendar, Rocket, Check, ExternalLink, Trash2

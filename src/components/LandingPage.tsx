@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import {
   Sparkles, ArrowRight, Zap, Target,
   ShieldCheck, BarChart3, Rocket, ChevronRight,

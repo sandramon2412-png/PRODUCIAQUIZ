@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { Sparkles, ShieldCheck, Loader2, Zap, ArrowRight, AlertCircle, Crown, Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../supabase';
 

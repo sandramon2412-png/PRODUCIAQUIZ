@@ -77,12 +77,6 @@ export default defineConfig(({mode}) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
-    ssr: {
-      noExternal: ['motion'],
-    },
-    optimizeDeps: {
-      include: ['motion/react'],
-    },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
     },

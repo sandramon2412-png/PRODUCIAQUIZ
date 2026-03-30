@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight, Search, PenTool, Rocket, Zap,
   Sparkles, CheckCircle2, BarChart3, Puzzle

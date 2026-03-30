@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, CheckCircle2, Monitor, Copy, ExternalLink } from 'lucide-react';
 
 interface DownloadModalProps {

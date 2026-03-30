@@ -10,7 +10,7 @@ import {
   Settings, Users, Layers, Rocket, ExternalLink,
   Clock, CheckCircle2, AlertCircle, LogOut
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { supabase } from '../supabase';
