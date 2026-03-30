@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, desktopCapturer, screen, globalShortcut, nativeImage } = require('electron');
 const path = require('path');
 
-// SINGLE INSTANCE LOCK - prevents opening multiple windows
+// SINGLE INSTANCE LOCK
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();
@@ -24,13 +24,13 @@ function createWindow() {
     x: screenWidth - EXPANDED_WIDTH - 20,
     y: screenHeight - EXPANDED_HEIGHT - 20,
     frame: false,
-    transparent: true,
+    transparent: false,
     resizable: false,
     skipTaskbar: false,
     alwaysOnTop: true,
-    hasShadow: false,
-    show: false, // Don't show until ready
-    backgroundColor: '#00000000',
+    hasShadow: true,
+    show: false,
+    backgroundColor: '#0d0d0d',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -38,10 +38,8 @@ function createWindow() {
     },
   });
 
-  // Use 'screen-saver' level on Windows to truly stay on top
   mainWindow.setAlwaysOnTop(true, 'screen-saver');
 
-  // Re-apply always-on-top when window loses focus (Windows workaround)
   mainWindow.on('blur', () => {
     if (mainWindow && mainWindow.isAlwaysOnTop()) {
       mainWindow.setAlwaysOnTop(false);
@@ -49,16 +47,27 @@ function createWindow() {
     }
   });
 
-  // Show window only when content is ready (prevents blank flash)
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
   });
 
-  // Load the app
-  const startUrl = process.env.ELECTRON_START_URL || `file://${path.join(__dirname, './dist/index.html')}`;
-  mainWindow.loadURL(startUrl);
+  // Try loading from local files
+  const localUrl = `file://${path.join(__dirname, './dist/index.html')}`;
+  const devUrl = process.env.ELECTRON_START_URL;
 
-  // Open external links in default browser
+  const urlToLoad = devUrl || localUrl;
+
+  mainWindow.loadURL(urlToLoad).catch((err) => {
+    console.error('Failed to load URL:', err);
+    // Show error page so user sees something instead of blank
+    mainWindow.loadURL(`data:text/html,<html><body style="background:#0d0d0d;color:white;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h2>Lloyd Assistant</h2><p>Error al cargar. Reinicia la app.</p></div></body></html>`);
+  });
+
+  // Log any page errors for debugging
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('Page failed to load:', errorCode, errorDescription);
+  });
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     require('electron').shell.openExternal(url);
     return { action: 'deny' };
@@ -69,7 +78,6 @@ function createWindow() {
   });
 }
 
-// If user tries to open a second instance, focus the existing window
 app.on('second-instance', () => {
   if (mainWindow) {
     if (!mainWindow.isVisible()) mainWindow.show();
@@ -132,7 +140,6 @@ ipcMain.handle('close-app', () => {
   app.quit();
 });
 
-// App lifecycle
 app.whenReady().then(() => {
   createWindow();
 
