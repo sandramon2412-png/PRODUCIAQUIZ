@@ -24,10 +24,9 @@ class LloydErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
   }
 }
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
-import { 
+import {
   X, MessageSquare, Sparkles, Mic, Send, Loader2
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import Dashboard from './components/Dashboard';
@@ -61,7 +60,6 @@ function cn(...inputs: ClassValue[]) {
 
 const FloatingAssistant = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const constraintsRef = useRef(null);
   const location = useLocation();
 
   useEffect(() => {
@@ -74,28 +72,17 @@ const FloatingAssistant = () => {
   if (location.pathname === '/lloyd') return null;
 
   return (
-    <div ref={constraintsRef} className="fixed inset-0 pointer-events-none z-[9999]">
+    <div className="fixed inset-0 pointer-events-none z-[9999]">
       <div className="absolute bottom-8 right-8 flex flex-col items-end gap-4 pointer-events-auto">
-        <AnimatePresence>
-          {isOpen && (
-            <motion.div
-              drag
-              dragConstraints={constraintsRef}
-              dragMomentum={false}
-              dragElastic={0.1}
-              initial={{ opacity: 0, scale: 0.95, y: 20, filter: 'blur(10px)' }}
-              animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, scale: 0.95, y: 20, filter: 'blur(10px)' }}
-              className="pointer-events-auto"
-            >
-              <LloydErrorBoundary>
-                <LloydPanel onClose={() => setIsOpen(false)} />
-              </LloydErrorBoundary>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {isOpen && (
+          <div className="pointer-events-auto animate-[fadeIn_0.2s_ease-out]">
+            <LloydErrorBoundary>
+              <LloydPanel onClose={() => setIsOpen(false)} />
+            </LloydErrorBoundary>
+          </div>
+        )}
 
-        <button 
+        <button
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
             "w-20 h-20 rounded-[28px] flex items-center justify-center shadow-[0_20px_40px_rgba(0,0,0,0.4)] transition-all duration-700 relative group",
