@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useRef, Component, type ReactNode, type ErrorInfo } from 'react';
+import { useState, useEffect, useRef, Component, type ReactNode, type ErrorInfo, lazy, Suspense } from 'react';
 
 // Error boundary to prevent LloydPanel crash from blanking the whole page
 class LloydErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; errorMsg: string }> {
@@ -45,9 +45,9 @@ import AuthPage from './components/AuthPage';
 import SettingsPage from './components/SettingsPage';
 import { voiceService } from './services/voiceService';
 import { aiService } from './services/aiService';
-import { LloydPanel } from './components/LloydPanel';
-import LloydStandalone from './components/LloydStandalone';
-import LloydElectron from './components/LloydElectron';
+const LloydPanel = lazy(() => import('./components/LloydPanel').then(m => ({ default: m.LloydPanel })));
+const LloydStandalone = lazy(() => import('./components/LloydStandalone'));
+const LloydElectron = lazy(() => import('./components/LloydElectron'));
 import { DownloadModal } from './components/DownloadModal';
 import {
   FileText, Megaphone, PenTool, Search, ScrollText,
@@ -94,7 +94,9 @@ const FloatingAssistant = () => {
               className="pointer-events-auto"
             >
               <LloydErrorBoundary>
-                <LloydPanel onClose={() => setIsOpen(false)} />
+                <Suspense fallback={<div className="w-[400px] h-[600px] bg-zinc-900 rounded-[32px] flex items-center justify-center"><div className="text-white/50 text-sm">Cargando Lloyd...</div></div>}>
+                  <LloydPanel onClose={() => setIsOpen(false)} />
+                </Suspense>
               </LloydErrorBoundary>
             </motion.div>
           )}
@@ -151,12 +153,12 @@ const AppContent = () => {
 
   // In Electron, only show Lloyd Electron
   if ((window as any).electronAPI?.isElectron) {
-    return <LloydElectron />;
+    return <Suspense fallback={<div className="h-screen bg-[#0d0d0d]" />}><LloydElectron /></Suspense>;
   }
 
   // In standalone PWA mode, only show Lloyd
   if (isStandalone) {
-    return <LloydStandalone />;
+    return <Suspense fallback={<div className="h-screen bg-[#050505]" />}><LloydStandalone /></Suspense>;
   }
 
   return (
@@ -173,7 +175,7 @@ const AppContent = () => {
         <Route path="/login" element={<AuthPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/lloyd" element={<LloydStandalone />} />
+        <Route path="/lloyd" element={<Suspense fallback={<div className="h-screen bg-[#050505]" />}><LloydStandalone /></Suspense>} />
         <Route path="/bot/modelador" element={<ModeladorBot />} />
 
         {/* Facebook Ad Library Analyzer */}
@@ -514,7 +516,7 @@ IMPORTANTE: No puedes navegar URLs. Si el usuario te da un link, pídele que peg
 export default function App() {
   // Electron: render Lloyd directly without Router (file:// doesn't support BrowserRouter)
   if ((window as any).electronAPI?.isElectron) {
-    return <LloydElectron />;
+    return <Suspense fallback={<div className="h-screen bg-[#0d0d0d]" />}><LloydElectron /></Suspense>;
   }
 
   return (
