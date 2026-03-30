@@ -2,7 +2,7 @@
   "name": "lloyd-assistant",
   "productName": "Lloyd Assistant",
   "private": true,
-  "version": "1.0.6",
+  "version": "1.0.7",
   "type": "module",
   "main": "electron-main.cjs",
   "description": "Lloyd - Tu asistente de IA para productos digitales",

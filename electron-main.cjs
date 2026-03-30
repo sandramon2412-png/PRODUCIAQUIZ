@@ -38,8 +38,16 @@ function createWindow() {
     },
   });
 
-  // Use 'floating' level - stays on top but doesn't block other windows
-  mainWindow.setAlwaysOnTop(true, 'floating');
+  // Use 'screen-saver' level on Windows to truly stay on top
+  mainWindow.setAlwaysOnTop(true, 'screen-saver');
+
+  // Re-apply always-on-top when window loses focus (Windows workaround)
+  mainWindow.on('blur', () => {
+    if (mainWindow && mainWindow.isAlwaysOnTop()) {
+      mainWindow.setAlwaysOnTop(false);
+      mainWindow.setAlwaysOnTop(true, 'screen-saver');
+    }
+  });
 
   // Show window only when content is ready (prevents blank flash)
   mainWindow.once('ready-to-show', () => {
@@ -115,7 +123,7 @@ ipcMain.handle('toggle-always-on-top', () => {
   if (current) {
     mainWindow.setAlwaysOnTop(false);
   } else {
-    mainWindow.setAlwaysOnTop(true, 'floating');
+    mainWindow.setAlwaysOnTop(true, 'screen-saver');
   }
   return !current;
 });
