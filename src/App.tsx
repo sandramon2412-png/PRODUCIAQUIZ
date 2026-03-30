@@ -43,8 +43,6 @@ import ChatBot from './components/ChatBot';
 import PricingPage from './components/PricingPage';
 import AuthPage from './components/AuthPage';
 import SettingsPage from './components/SettingsPage';
-import { voiceService } from './services/voiceService';
-import { aiService } from './services/aiService';
 const LloydPanel = lazy(() => import('./components/LloydPanel').then(m => ({ default: m.LloydPanel })));
 const LloydStandalone = lazy(() => import('./components/LloydStandalone'));
 const LloydElectron = lazy(() => import('./components/LloydElectron'));

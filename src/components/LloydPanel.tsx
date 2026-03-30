@@ -7,14 +7,30 @@ import {
   Puzzle, Activity, Image, ShieldCheck, Box, Database,
   Palette, Dumbbell, FileDown, Search, Copy, Check
 } from 'lucide-react';
-// motion/react removed - caused TDZ bundling error
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-import { voiceService } from '../services/voiceService';
-import { aiService } from '../services/aiService';
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+// Inline cn to avoid clsx/tailwind-merge TDZ bundling issues
+function cn(...classes: (string | boolean | undefined | null)[]) {
+  return classes.filter(Boolean).join(' ');
+}
+
+// Dynamic imports to avoid TDZ - loaded on first use
+let _voiceService: any = null;
+let _aiService: any = null;
+
+async function getVoiceService() {
+  if (!_voiceService) {
+    const mod = await import('../services/voiceService');
+    _voiceService = mod.voiceService;
+  }
+  return _voiceService;
+}
+
+async function getAiService() {
+  if (!_aiService) {
+    const mod = await import('../services/aiService');
+    _aiService = mod.aiService;
+  }
+  return _aiService;
 }
 
 interface LloydPanelProps {
@@ -154,7 +170,8 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
       setIsLoading(true);
 
       // Send to Claude Vision
-      const response = await aiService.analyzeScreenshot(base64);
+      const ai = await getAiService();
+      const response = await ai.analyzeScreenshot(base64);
       setChat(prev => [...prev, { role: 'model' as const, text: response }]);
     } catch (error: any) {
       if (error.name !== 'NotAllowedError') {
@@ -169,7 +186,8 @@ export const LloydPanel = ({ onClose, isStandalone = false }: LloydPanelProps) =
     const msgToSend = text || message;
     if (!msgToSend.trim() && !isScreenshot || isLoading) return;
 
-    if (!aiService.hasApiKeys()) {
+    const ai = await getAiService();
+    if (!ai.hasApiKeys()) {
       setChat(prev => [...prev,
         { role: 'user' as const, text: msgToSend },
         { role: 'model' as const, text: 'Las API keys de IA no estan configuradas. El administrador debe agregar VITE_GROQ_API_KEY y/o VITE_CLAUDE_API_KEY en Vercel y redesplegar el proyecto.' }
@@ -229,18 +247,19 @@ REGLAS IMPORTANTES:
 - Ayuda directamente con lo que el usuario pida.`;
       }
 
-      const response = await aiService.generateCustomBotResponse(userMsg, systemPrompt, history);
-      
+      const response = await ai.generateCustomBotResponse(userMsg, systemPrompt, history);
+
       if (!response) {
         throw new Error('No se recibió respuesta del servicio de IA.');
       }
 
       const aiResponse = response;
-      
+
       setChat(prev => [...prev, { role: 'model', text: aiResponse }]);
-      
+
       if (isListening || text) {
-        voiceService.speak(aiResponse);
+        const voice = await getVoiceService();
+        voice.speak(aiResponse);
       }
     } catch (error: any) {
       console.error("Assistant Error:", error);
@@ -261,14 +280,15 @@ REGLAS IMPORTANTES:
     }
   };
 
-  const toggleVoice = () => {
+  const toggleVoice = async () => {
+    const voice = await getVoiceService();
     if (isListening) {
-      voiceService.stopListening();
+      voice.stopListening();
       setIsListening(false);
     } else {
       setIsListening(true);
-      voiceService.startListening(
-        (text) => handleSend(text),
+      voice.startListening(
+        (text: string) => handleSend(text),
         () => setIsListening(false)
       );
     }
