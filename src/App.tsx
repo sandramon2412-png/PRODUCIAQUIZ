@@ -3,7 +3,26 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Component, type ReactNode } from 'react';
+
+class LloydErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; errorMsg: string }> {
+  constructor(props: any) { super(props); this.state = { hasError: false, errorMsg: '' }; }
+  static getDerivedStateFromError(error: Error) { return { hasError: true, errorMsg: error?.message || String(error) }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{width:400,background:'#111',border:'1px solid #333',borderRadius:24,padding:24}}>
+          <p style={{color:'white',fontWeight:'bold'}}>Lloyd error:</p>
+          <p style={{color:'#f44',fontSize:12,wordBreak:'break-all'}}>{this.state.errorMsg}</p>
+          <button onClick={() => this.setState({ hasError: false, errorMsg: '' })} style={{marginTop:12,padding:'8px 16px',background:'#7c3aed',color:'white',border:'none',borderRadius:12,fontWeight:'bold',cursor:'pointer'}}>
+            Reintentar
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   X, MessageSquare, Sparkles, Mic, Send, Loader2
@@ -69,7 +88,9 @@ const FloatingAssistant = () => {
               exit={{ opacity: 0, scale: 0.95, y: 20, filter: 'blur(10px)' }}
               className="pointer-events-auto"
             >
-              <LloydPanel onClose={() => setIsOpen(false)} />
+              <LloydErrorBoundary>
+                <LloydPanel onClose={() => setIsOpen(false)} />
+              </LloydErrorBoundary>
             </motion.div>
           )}
         </AnimatePresence>
